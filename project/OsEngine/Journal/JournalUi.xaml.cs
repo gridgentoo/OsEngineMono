@@ -1,5 +1,6 @@
 ﻿/*
- *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
+ * Your rights to use code governed by this license http://o-s-a.net/doc/license_simple_engine.pdf
+ * Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
 using System;
@@ -19,7 +20,8 @@ using OsEngine.Logging;
 using Color = System.Drawing.Color;
 using Rectangle = System.Drawing.Rectangle;
 using System.Windows.Forms.DataVisualization.Charting;
-using OsEngine.Market.Servers;
+using OsEngine.Language;
+using OsEngine.Market;
 using Chart = System.Windows.Forms.DataVisualization.Charting.Chart;
 using ChartArea = System.Windows.Forms.DataVisualization.Charting.ChartArea;
 using ContextMenu = System.Windows.Forms.ContextMenu;
@@ -29,26 +31,30 @@ using Series = System.Windows.Forms.DataVisualization.Charting.Series;
 namespace OsEngine.Journal
 {
     /// <summary>
+    /// Interaction logic for JournalNewUi.xaml
     /// Логика взаимодействия для JournalNewUi.xaml
     /// </summary>
     public partial class JournalUi
     {
-
         /// <summary>
+        /// if window recycled
         /// является ли окно утилизированным
         /// </summary>
         public bool IsErase;
 
         /// <summary>
+        /// objects containing positions and robots
         /// объекты содержащие позиции и роботов
         /// </summary>
         private List<BotPanelJournal> _botsJournals;
 
         /// <summary>
+        /// constructor
         /// конструктор
         /// </summary>
-        public JournalUi(List<BotPanelJournal> botsJournals)
+        public JournalUi(List<BotPanelJournal> botsJournals,StartProgram startProgram)
         {
+            _startProgram = startProgram;
             InitializeComponent();
             _botsJournals = botsJournals;
             TabControlCreateNameBots();
@@ -64,9 +70,22 @@ namespace OsEngine.Journal
             Thread worker = new Thread(ThreadWorkerPlace);
             worker.IsBackground = true;
             worker.Start();
+
+            Title = OsLocalization.Journal.TitleJournalUi;
+            Label1.Content = OsLocalization.Journal.Label1;
+            Label2.Content = OsLocalization.Journal.Label2;
+            Label3.Content = OsLocalization.Journal.Label3;
+
+            TabItem1.Header = OsLocalization.Journal.TabItem1;
+            TabItem2.Header = OsLocalization.Journal.TabItem2;
+            TabItem3.Header = OsLocalization.Journal.TabItem3;
+            TabItem4.Header = OsLocalization.Journal.TabItem4;
+            TabItem5.Header = OsLocalization.Journal.TabItem5;
+            TabItem6.Header = OsLocalization.Journal.TabItem6;
         }
 
         /// <summary>
+        /// size of the tabs has changed.
         /// изменился размер вкладок
         /// </summary>
         void TabBotsSizeChanged(object sender, SizeChangedEventArgs e)
@@ -83,7 +102,10 @@ namespace OsEngine.Journal
 
         private object _paintLocker = new object();
 
+        private StartProgram _startProgram;
+
         /// <summary>
+        /// main method of repainting report tables
         /// главный метод перерисовки таблиц отчётов
         /// </summary>
         public void RePaint()
@@ -106,18 +128,21 @@ namespace OsEngine.Journal
 
             lock (_paintLocker)
             {
+                // 1 collecting all journals.
                 // 1 собираем все журналы
                 List<Journal> myJournals = new List<Journal>();
 
                 for (int i = 0; i < _botsJournals.Count; i++)
                 {
                     string name = ((TabItem)TabBots.SelectedItem).Header.ToString();
+                    // 1 only take our bots
                     // 1 берём только нашего бота
                     if (name == "V" || name == _botsJournals[i].BotName)
                     {
                         for (int i2 = 0; i2 < _botsJournals[i]._Tabs.Count; i2++)
                         {
-                            string nameTab = ((TabItem)TabControlLeft.SelectedItem).Header.ToString();
+                            string nameTab = ((TabItem)TabControlLeft.SelectedItem).Header.ToString().Replace(" ","");
+                            // 2 only take our tabs
                             // 2 берём только наши вкладки
                             if (name == "V" || nameTab == "V" || nameTab == _botsJournals[i]._Tabs[i2].TabNum.ToString())
                             {
@@ -131,7 +156,7 @@ namespace OsEngine.Journal
                 {
                     return;
                 }
-
+                // 2 sorting deals on ALL / Long / Short
                 // 2 сортируем сделки на ВСЕ / Лонг / Шорт
 
                 List<Position> positionsAll = new List<Position>();
@@ -157,7 +182,7 @@ namespace OsEngine.Journal
                 positionsShort =
                     positionsShort.FindAll(
                         pos => pos.State != PositionStateType.OpeningFail && pos.State != PositionStateType.Opening);
-
+                // 3 sort transactions by time (this is better in a separate method)
                 // 3 сортируем сделки по времени(это лучше в отдельном методе)
 
 
@@ -277,6 +302,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// delete position by number
         /// удалить позицию по номеру
         /// </summary>
         private void DeletePosition(int number)
@@ -301,6 +327,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// show a window of transaction details
         /// показать окно с подробностями по сделке
         /// </summary>
         private void ShowPositionDialog(int number)
@@ -326,11 +353,12 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// the location of stream updating statistics
         /// место работы потока обновляющего статистку
         /// </summary>
         private void ThreadWorkerPlace()
         {
-            if (ServerMaster.StartProgram != ServerStartProgramm.IsOsTrader)
+            if (_startProgram != StartProgram.IsOsTrader)
             {
                 return;
             }
@@ -346,10 +374,11 @@ namespace OsEngine.Journal
                 RePaint();
             }
         }
-
-// менеджмент вкладок
+        // tab management
+        // менеджмент вкладок
 
         /// <summary>
+        /// Filling the main TabControl with robot names
         /// заполнение основного TabControl именами роботов
         /// </summary>
         private void TabControlCreateNameBots()
@@ -365,6 +394,7 @@ namespace OsEngine.Journal
 
             for (int i = 0; i < _botsJournals.Count; i++)
             {
+                // addition of a new element
                 // добавление нового элемента
                 TabItem item = new TabItem() { Header = _botsJournals[i].BotName.ToString(), FontSize = 12 };
                 TabBots.Items.Add(item);
@@ -373,6 +403,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// Robot panel selection event , filling TabControl with Tabs robots
         /// событие выбора на панели роботов , заполнение TabControl с Tabs роботов
         /// </summary>
         private void TabBotsSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -382,6 +413,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// statistics tab switched
         /// переключилась вкладка статистки
         /// </summary>
         void TabControlPrime_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -390,6 +422,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// Robot left tab update
         /// обновление левой вкладки робота
         /// </summary>
         private void ReloadTabs()
@@ -405,13 +438,13 @@ namespace OsEngine.Journal
                     {
                         if (_botsJournals[i]._Tabs.Count > 1)
                         {
-                            TabItem item = new TabItem() { Header = "V", FontSize = 12 };
+                            TabItem item = new TabItem() { Header = " V", FontSize = 12 };
                             TabControlLeft.Items.Add(item);
                         }
 
                         for (int i2 = 0; i2 < _botsJournals[i]._Tabs.Count; i2++)
                         {
-                            TabItem item = new TabItem() { Header = i2.ToString(), FontSize = 12 };
+                            TabItem item = new TabItem() { Header = " " + i2.ToString(), FontSize = 12 };
                             TabControlLeft.Items.Add(item);
                         }
 
@@ -421,7 +454,7 @@ namespace OsEngine.Journal
 
                 if (((TabItem)TabBots.Items[TabBots.SelectedIndex]).Header.ToString() == "V")
                 {
-                    TabItem item = new TabItem() { Header = "V", FontSize = 12 };
+                    TabItem item = new TabItem() { Header = " V", FontSize = 12 };
                     TabControlLeft.Items.Add(item);
                     TabControlLeft.SelectedItem = item;
                 }
@@ -432,48 +465,38 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// event when you change the Item TabControl selection from Tabs robots
         /// событие при изменении выборе Item TabControl с Tabs роботов
         /// </summary>
         private void TabControlLeftSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            // robot tab selection
             // выбор вкладки робота
             RePaint();
         }
-
-// заполнение таблицы статистики
+        // filling in the statistics table
+        // заполнение таблицы статистики
 
         /// <summary>
+        /// table for drawing statistics
         /// таблица для прорисовки Статистики
         /// </summary>
         private DataGridView _gridStatistics;
 
         /// <summary>
+        /// creating an empty Statistics form for the ItemStatistics tab
         /// создание пустой формы Статистики для вкладки ItemStatistics
         /// </summary>
         public void CreateTableToStatistic()
         {
             try
             {
-                _gridStatistics = new DataGridView();
-                HostStatistics.Child = _gridStatistics;
-                HostStatistics.Child.Show();
-                _gridStatistics.AllowUserToOrderColumns = false;
+                _gridStatistics = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.FullRowSelect, DataGridViewAutoSizeRowsMode.None);
+
                 _gridStatistics.AllowUserToResizeRows = false;
-                _gridStatistics.AllowUserToDeleteRows = false;
-                _gridStatistics.AllowUserToAddRows = false;
-                _gridStatistics.RowHeadersVisible = false;
-                _gridStatistics.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-                _gridStatistics.MultiSelect = false;
-
-
-                DataGridViewCellStyle style = new DataGridViewCellStyle();
-                style.Alignment = DataGridViewContentAlignment.BottomRight;
-                style.SelectionBackColor = Color.White;
-                style.SelectionForeColor = Color.Black;
-
 
                 CustomDataGridViewCell cell0 = new CustomDataGridViewCell();
-                cell0.Style = style;
+                cell0.Style = _gridStatistics.DefaultCellStyle;
                 cell0.AdvancedBorderStyle = new DataGridViewAdvancedBorderStyle
                 {
                     Bottom = DataGridViewAdvancedCellBorderStyle.None,
@@ -481,6 +504,9 @@ namespace OsEngine.Journal
                     Left = DataGridViewAdvancedCellBorderStyle.Inset,
                     Right = DataGridViewAdvancedCellBorderStyle.Inset
                 };
+
+                HostStatistics.Child = _gridStatistics;
+                HostStatistics.Child.Show();
 
                 DataGridViewColumn column0 = new DataGridViewColumn();
                 column0.CellTemplate = cell0;
@@ -492,7 +518,7 @@ namespace OsEngine.Journal
 
                 DataGridViewColumn column1 = new DataGridViewColumn();
                 column1.CellTemplate = cell0;
-                column1.HeaderText = @"Все";
+                column1.HeaderText = OsLocalization.Journal.GridColumn1;
                 column1.ReadOnly = true;
                 column1.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
                 _gridStatistics.Columns.Add(column1);
@@ -500,143 +526,52 @@ namespace OsEngine.Journal
 
                 DataGridViewColumn column2 = new DataGridViewColumn();
                 column2.CellTemplate = cell0;
-                column2.HeaderText = @"Лонг";
+                column2.HeaderText = OsLocalization.Journal.GridColumn2;
                 column2.ReadOnly = true;
                 column2.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
                 _gridStatistics.Columns.Add(column2);
 
                 DataGridViewColumn column3 = new DataGridViewColumn();
                 column3.CellTemplate = cell0;
-                column3.HeaderText = @"Шорт";
+                column3.HeaderText = OsLocalization.Journal.GridColumn3;
                 column3.ReadOnly = true;
                 column3.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
                 _gridStatistics.Columns.Add(column3);
 
                 for (int i = 0; i < 27; i++)
                 {
-                    _gridStatistics.Rows.Add(); // добавление строки
-                    DataGridViewRow newRow = _gridStatistics.Rows[_gridStatistics.Rows.Count - 1];
-                    for (int i2 = 0; i2 < 4; i2++)
-                    {
-
-                        Color lineColor = new Color();
-                        if (i % 2 > 0) lineColor = Color.FromArgb(200, 200, 200); //WhiteSmoke;
-                        else lineColor = Color.White;
-
-                        newRow.Cells[i2] = (new CustomDataGridViewCell()
-                        {
-
-                            AdvancedBorderStyle =
-                                new DataGridViewAdvancedBorderStyle()
-                                {
-                                    Top = DataGridViewAdvancedCellBorderStyle.None,
-                                    Bottom = DataGridViewAdvancedCellBorderStyle.None,
-                                    Left = DataGridViewAdvancedCellBorderStyle.Inset,
-                                    Right = DataGridViewAdvancedCellBorderStyle.Inset
-                                },
-
-                            Style = new DataGridViewCellStyle()
-                            {
-                                Alignment = DataGridViewContentAlignment.BottomRight,
-                                SelectionBackColor = Color.White,
-                                SelectionForeColor = Color.Black,
-                                BackColor = lineColor
-                            }
-
-
-                        });
-
-
-                    }
+                    _gridStatistics.Rows.Add(); //string addition/ добавление строки
                 }
 
-                _gridStatistics.Rows[0].Cells[0].Value = @"Чистый П\У";
-                _gridStatistics.Rows[1].Cells[0].Value = @"Чистый ПУ %";
-                _gridStatistics.Rows[2].Cells[0].Value = "Количество сделок";
-                _gridStatistics.Rows[3].Cells[0].Value = "Profit Factor";
-                _gridStatistics.Rows[4].Cells[0].Value = "Recovery";
+                _gridStatistics.Rows[0].Cells[0].Value = OsLocalization.Journal.GridRow1;
+                _gridStatistics.Rows[1].Cells[0].Value = OsLocalization.Journal.GridRow2;
+                _gridStatistics.Rows[2].Cells[0].Value = OsLocalization.Journal.GridRow3;
+                _gridStatistics.Rows[3].Cells[0].Value = OsLocalization.Journal.GridRow4;
+                _gridStatistics.Rows[4].Cells[0].Value = OsLocalization.Journal.GridRow5;
 
-                for (int i = 0; i < 4; i++)
-                {
-
-                    _gridStatistics.Rows[5].Cells[i] = new CustomDataGridViewCell()
-                    {
-                        AdvancedBorderStyle =
-                            new DataGridViewAdvancedBorderStyle()
-                            {
-                                Top = DataGridViewAdvancedCellBorderStyle.None,
-                                Bottom = DataGridViewAdvancedCellBorderStyle.Single,
-                                Left = DataGridViewAdvancedCellBorderStyle.Inset,
-                                Right = DataGridViewAdvancedCellBorderStyle.Inset
-                            },
-                        Style = new DataGridViewCellStyle()
-                        {
-                            BackColor = Color.FromArgb(200, 200, 200)
-                        }
-                    };
-                }
-
-                _gridStatistics.Rows[6].Cells[0].Value = @"Сред. П\У   движение";
-                _gridStatistics.Rows[7].Cells[0].Value = @"Сред. П\У % движение";
-                _gridStatistics.Rows[8].Cells[0].Value = @"Сред. П\У    капитал";
-                _gridStatistics.Rows[9].Cells[0].Value = @"Сред. П\У %  капитал";
+                _gridStatistics.Rows[6].Cells[0].Value = OsLocalization.Journal.GridRow6;
+                _gridStatistics.Rows[7].Cells[0].Value = OsLocalization.Journal.GridRow7;
+                _gridStatistics.Rows[8].Cells[0].Value = OsLocalization.Journal.GridRow8;
+                _gridStatistics.Rows[9].Cells[0].Value = OsLocalization.Journal.GridRow9;
 
 
+                _gridStatistics.Rows[11].Cells[0].Value = OsLocalization.Journal.GridRow10;
+                _gridStatistics.Rows[12].Cells[0].Value = OsLocalization.Journal.GridRow11;
+                _gridStatistics.Rows[13].Cells[0].Value = OsLocalization.Journal.GridRow6;
+                _gridStatistics.Rows[14].Cells[0].Value = OsLocalization.Journal.GridRow7;
+                _gridStatistics.Rows[15].Cells[0].Value = OsLocalization.Journal.GridRow8;
+                _gridStatistics.Rows[16].Cells[0].Value = OsLocalization.Journal.GridRow9;
+                _gridStatistics.Rows[17].Cells[0].Value = OsLocalization.Journal.GridRow12;
 
-                for (int i = 0; i < 4; i++)
-                {
-                    _gridStatistics.Rows[10].Cells[i] = new CustomDataGridViewCell()
-                    {
-                        AdvancedBorderStyle =
-                            new DataGridViewAdvancedBorderStyle()
-                            {
-                                Top = DataGridViewAdvancedCellBorderStyle.None,
-                                Bottom = DataGridViewAdvancedCellBorderStyle.Single,
-                                Left = DataGridViewAdvancedCellBorderStyle.Inset,
-                                Right = DataGridViewAdvancedCellBorderStyle.Inset
-                            },
-                        Style = new DataGridViewCellStyle()
-                        {
-                            BackColor = Color.White
-                        }
-                    };
-                }
-                _gridStatistics.Rows[11].Cells[0].Value = "Прибыльных сделок";
-                _gridStatistics.Rows[12].Cells[0].Value = @"Прибыльных %";
-                _gridStatistics.Rows[13].Cells[0].Value = @"Сред. П\У     движение";
-                _gridStatistics.Rows[14].Cells[0].Value = @"Сред. П\У %   движение";
-                _gridStatistics.Rows[15].Cells[0].Value = @"Сред. П\У      капитал";
-                _gridStatistics.Rows[16].Cells[0].Value = @"Сред. П\У %    капитал";
-                _gridStatistics.Rows[17].Cells[0].Value = "Максимум подряд";
-
-                for (int i = 0; i < 4; i++)
-                {
-                    _gridStatistics.Rows[18].Cells[i] = new CustomDataGridViewCell()
-                    {
-                        AdvancedBorderStyle =
-                            new DataGridViewAdvancedBorderStyle()
-                            {
-                                Top = DataGridViewAdvancedCellBorderStyle.None,
-                                Bottom = DataGridViewAdvancedCellBorderStyle.Single,
-                                Left = DataGridViewAdvancedCellBorderStyle.Inset,
-                                Right = DataGridViewAdvancedCellBorderStyle.Inset
-                            },
-                        Style = new DataGridViewCellStyle()
-                        {
-                            BackColor = Color.White
-                        }
-                    };
-                }
-
-                _gridStatistics.Rows[19].Cells[0].Value = "Убыточных сделок";
-                _gridStatistics.Rows[20].Cells[0].Value = "Убыточных %";
-                _gridStatistics.Rows[21].Cells[0].Value = @"Сред. П\У     движение";
-                _gridStatistics.Rows[22].Cells[0].Value = @"Сред. П\У %   движение";
-                _gridStatistics.Rows[23].Cells[0].Value = @"Сред. П\У      капитал";
-                _gridStatistics.Rows[24].Cells[0].Value = @"Сред. П\У %    капитал";
-                _gridStatistics.Rows[25].Cells[0].Value = @"Макс. подряд";
+                _gridStatistics.Rows[19].Cells[0].Value = OsLocalization.Journal.GridRow13;
+                _gridStatistics.Rows[20].Cells[0].Value = OsLocalization.Journal.GridRow14;
+                _gridStatistics.Rows[21].Cells[0].Value = OsLocalization.Journal.GridRow6;
+                _gridStatistics.Rows[22].Cells[0].Value = OsLocalization.Journal.GridRow7;
+                _gridStatistics.Rows[23].Cells[0].Value = OsLocalization.Journal.GridRow8;
+                _gridStatistics.Rows[24].Cells[0].Value = OsLocalization.Journal.GridRow9;
+                _gridStatistics.Rows[25].Cells[0].Value = OsLocalization.Journal.GridRow12;
                 _gridStatistics.Rows[26].Cells[0].Value = "";
-                _gridStatistics.Rows[27].Cells[0].Value = @"Макс. просадка% капитал";
+                _gridStatistics.Rows[27].Cells[0].Value = OsLocalization.Journal.GridRow15;
             }
             catch (Exception error)
             {
@@ -645,6 +580,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// draw a table of statistics
         /// прорисовать таблицу статистики
         /// </summary>
         private void PaintStatTable(List<Position> positionsAll, List<Position> positionsLong, List<Position> positionsShort, bool neadShowTickState)
@@ -696,15 +632,17 @@ namespace OsEngine.Journal
                 }
             }
         }
-
-// прорисовка профита
+        // profit drawing
+        // прорисовка профита
 
         /// <summary>
+        /// chart
         /// чарт
         /// </summary>
         Chart _chartEquity;
 
         /// <summary>
+        /// to create a profit chart
         /// создать чарт для профита
         /// </summary>
         private void CreateChartProfit()
@@ -717,15 +655,15 @@ namespace OsEngine.Journal
 
                 _chartEquity.Series.Clear();
                 _chartEquity.ChartAreas.Clear();
-                _chartEquity.BackColor = Color.FromArgb(255, 27, 27, 27);
+                _chartEquity.BackColor = Color.FromArgb(17, 18, 23);
                 _chartEquity.Click += _chartEquity_Click;
 
                 ChartArea areaLineProfit = new ChartArea("ChartAreaProfit");
                 areaLineProfit.Position.Height = 70;
                 areaLineProfit.Position.Width = 100;
                 areaLineProfit.Position.Y = 0;
-                areaLineProfit.CursorX.IsUserSelectionEnabled = false; // разрешаем пользователю изменять рамки представления
-                areaLineProfit.CursorX.IsUserEnabled = true; //чертa
+                areaLineProfit.CursorX.IsUserSelectionEnabled = false; //allow the user to change the view scope/ разрешаем пользователю изменять рамки представления
+                areaLineProfit.CursorX.IsUserEnabled = true; //trait/чертa
 
                 _chartEquity.ChartAreas.Add(areaLineProfit);
 
@@ -735,14 +673,14 @@ namespace OsEngine.Journal
                 areaLineProfitBar.Position.Width = 100;
                 areaLineProfitBar.Position.Y = 70;
                 areaLineProfitBar.AxisX.Enabled = AxisEnabled.False;
-                areaLineProfitBar.CursorX.IsUserEnabled = true; //чертa
+                areaLineProfitBar.CursorX.IsUserEnabled = true; //trait/чертa
 
                 _chartEquity.ChartAreas.Add(areaLineProfitBar);
 
                 for (int i = 0; i < _chartEquity.ChartAreas.Count; i++)
                 {
                     _chartEquity.ChartAreas[i].BorderColor = Color.Black;
-                    _chartEquity.ChartAreas[i].BackColor = Color.FromArgb(255, 27, 27, 27);
+                    _chartEquity.ChartAreas[i].BackColor = Color.FromArgb(17, 18, 23);
                     _chartEquity.ChartAreas[i].CursorY.LineColor = Color.Gainsboro;
                     _chartEquity.ChartAreas[i].CursorX.LineColor = Color.Black;
                     _chartEquity.ChartAreas[i].AxisX.TitleForeColor = Color.Gainsboro;
@@ -762,6 +700,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// chart out the volumes
         /// прорисовать чарт объёмов
         /// </summary>
         private void PaintProfitOnChart(List<Position> positionsAll)
@@ -815,12 +754,15 @@ namespace OsEngine.Journal
                 decimal profitSum = 0;
                 decimal profitSumLong = 0;
                 decimal profitSumShort = 0;
+                decimal maxYVal = 0;
+                decimal minYval = decimal.MaxValue;
                 //Side d = new Side();
 
                 for (int i = 0; i < positionsAll.Count; i++)
                 {
                     profitSum += positionsAll[i].ProfitPortfolioPunkt;
                     profit.Points.AddXY(i, profitSum);
+
 
                     profit.Points[profit.Points.Count - 1].AxisLabel =
                         positionsAll[i].TimeCreate.ToString(new CultureInfo("ru-RU"));
@@ -837,6 +779,32 @@ namespace OsEngine.Journal
                         profitSumShort += positionsAll[i].ProfitPortfolioPunkt;
                     }
 
+                    if (profitSum > maxYVal)
+                    {
+                        maxYVal = profitSum;
+                    }
+                    if (profitSumLong > maxYVal)
+                    {
+                        maxYVal = profitSumLong;
+                    }
+                    if (profitSumShort > maxYVal)
+                    {
+                        maxYVal = profitSumShort;
+                    }
+
+                    if (profitSum < minYval)
+                    {
+                        minYval = profitSum;
+                    }
+                    if (profitSumLong < minYval)
+                    {
+                        minYval = profitSumLong;
+                    }
+                    if (profitSumShort < minYval)
+                    {
+                        minYval = profitSumShort;
+                    }
+
                     profitLong.Points.AddXY(i, profitSumLong);
                     profitShort.Points.AddXY(i, profitSumShort);
 
@@ -846,7 +814,7 @@ namespace OsEngine.Journal
                     }
                     else
                     {
-                        profitBar.Points[profitBar.Points.Count - 1].Color = Color.DarkOrange;
+                        profitBar.Points[profitBar.Points.Count - 1].Color = Color.DarkRed;
                     }
 
                 }
@@ -855,6 +823,13 @@ namespace OsEngine.Journal
                 _chartEquity.Series.Add(profitLong);
                 _chartEquity.Series.Add(profitShort);
                 _chartEquity.Series.Add(profitBar);
+
+                if(minYval != decimal.MaxValue &&
+                    maxYVal != 0)
+                {
+                    _chartEquity.ChartAreas[0].AxisY2.Maximum = (double)maxYVal;
+                    _chartEquity.ChartAreas[0].AxisY2.Minimum = (double)minYval;
+                }
             }
             catch (Exception error)
             {
@@ -863,6 +838,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// equity chart click
         /// клик по чарту эквити
         /// </summary>
         void _chartEquity_Click(object sender, EventArgs e)
@@ -909,18 +885,20 @@ namespace OsEngine.Journal
 
                 _chartEquity.Series[i].Points[index].Label = label;
                 _chartEquity.Series[i].Points[index].LabelForeColor = _chartEquity.Series[i].Points[index].Color;
-                _chartEquity.Series[i].Points[index].LabelBackColor = Color.Black;
+                _chartEquity.Series[i].Points[index].LabelBackColor = Color.FromArgb(17, 18, 23);
             }
         }
-
-// прорисовка объёма
+        // volume drawing
+        // прорисовка объёма
 
         /// <summary>
+        /// volume chart
         /// чарт для объёмов
         /// </summary>
         Chart _chartVolume;
 
         /// <summary>
+        /// to create a chart for drawing volumes
         /// создать чарт для прорисовки объёмов
         /// </summary>
         private void CreateChartVolume()
@@ -931,7 +909,7 @@ namespace OsEngine.Journal
                 HostVolume.Child = _chartVolume;
                 HostVolume.Child.Show();
 
-                _chartVolume.BackColor = Color.FromArgb(255, 27, 27, 27);
+                _chartVolume.BackColor = Color.FromArgb(17, 18, 23);
                 _chartVolume.Click += _chartVolume_Click;
             }
             catch (Exception error)
@@ -941,6 +919,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// draw the chart
         /// прорисовать чарт
         /// </summary>
         private void PaintVolumeOnChart(List<Position> positionsAll)
@@ -954,7 +933,7 @@ namespace OsEngine.Journal
 
             _chartVolume.Series.Clear();
             _chartVolume.ChartAreas.Clear();
-
+            //  take the number of tools
             // берём кол-во инструментов
             List<VolumeSecurity> volumes = new List<VolumeSecurity>();
 
@@ -970,7 +949,7 @@ namespace OsEngine.Journal
             {
                 return;
             }
-
+            // create a common time line with all the changes
             // создаём общую линию времени со всеми изменениями
 
             List<DateTime> allChange = new List<DateTime>();
@@ -1091,12 +1070,13 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// draw volumes by instrument
         /// прорисовать объёмы по инструменту
         /// </summary>
-        /// <param name="volume">массив</param>
-        /// <param name="name">бумага</param>
-        /// <param name="color">цвет серии</param>
-        /// <param name="times">времена</param>
+        /// <param name="volume">array/массив</param>
+        /// <param name="name">paper/бумага</param>
+        /// <param name="color">Color series/цвет серии</param>
+        /// <param name="times">times/времена</param>
         private void PaintValuesVolume(List<decimal> volume, string name, Color color, List<DateTime> times )
         {
             if (volume == null ||
@@ -1107,11 +1087,11 @@ namespace OsEngine.Journal
 
             ChartArea areaLineSecurity = new ChartArea("ChartArea" + name);
             
-            areaLineSecurity.CursorX.IsUserSelectionEnabled = false; // разрешаем пользователю изменять рамки представления
-            areaLineSecurity.CursorX.IsUserEnabled = true; //чертa
+            areaLineSecurity.CursorX.IsUserSelectionEnabled = false; //allow the user to change the view scope/ разрешаем пользователю изменять рамки представления
+            areaLineSecurity.CursorX.IsUserEnabled = true; //trait/чертa
 
             areaLineSecurity.BorderColor = Color.Black;
-            areaLineSecurity.BackColor = Color.FromArgb(255, 27, 27, 27);
+            areaLineSecurity.BackColor = Color.FromArgb(17, 18, 23);
             areaLineSecurity.CursorY.LineColor = Color.Gainsboro;
             areaLineSecurity.CursorX.LineColor = Color.Black;
             areaLineSecurity.AxisX.TitleForeColor = Color.Gainsboro;
@@ -1186,6 +1166,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// click on the volume website
         /// клик на чарте объёмов
         /// </summary>
         void _chartVolume_Click(object sender, EventArgs e)
@@ -1236,18 +1217,20 @@ namespace OsEngine.Journal
 
                 _chartVolume.Series[i].Points[index].Label = label;
                 _chartVolume.Series[i].Points[index].LabelForeColor = _chartVolume.Series[i].Points[index].Color;
-                _chartVolume.Series[i].Points[index].LabelBackColor = Color.Black;
+                _chartVolume.Series[i].Points[index].LabelBackColor = Color.FromArgb(17, 18, 23);
             }
         }
-
-// прорисовка просадки
+        // sketch of drawdown
+        // прорисовка просадки
 
         /// <summary>
+        /// drawdown chart
         /// чарт для просадки
         /// </summary>
         Chart _chartDd;
 
         /// <summary>
+        /// to create a drawdown chart
         /// создать чарт для просадки
         /// </summary>
         private void CreateChartDrowDown()
@@ -1260,15 +1243,15 @@ namespace OsEngine.Journal
 
                 _chartDd.Series.Clear();
                 _chartDd.ChartAreas.Clear();
-                _chartDd.BackColor = Color.FromArgb(255, 27, 27, 27);
+                _chartDd.BackColor = Color.FromArgb(17, 18, 23);
                 _chartDd.Click += _chartDd_Click;
 
                 ChartArea areaDdPunct = new ChartArea("ChartAreaDdPunct");
                 areaDdPunct.Position.Height = 50;
                 areaDdPunct.Position.Width = 100;
                 areaDdPunct.Position.Y = 0;
-                areaDdPunct.CursorX.IsUserSelectionEnabled = false; // разрешаем пользователю изменять рамки представления
-                areaDdPunct.CursorX.IsUserEnabled = true; //чертa
+                areaDdPunct.CursorX.IsUserSelectionEnabled = false; //allow the user to change the view scope/ разрешаем пользователю изменять рамки представления
+                areaDdPunct.CursorX.IsUserEnabled = true; //trait/чертa
 
                 _chartDd.ChartAreas.Add(areaDdPunct);
 
@@ -1278,14 +1261,14 @@ namespace OsEngine.Journal
                 areaDdPersent.Position.Width = 100;
                 areaDdPersent.Position.Y = 50;
                 areaDdPersent.AxisX.Enabled = AxisEnabled.False;
-                areaDdPersent.CursorX.IsUserEnabled = true; //чертa
+                areaDdPersent.CursorX.IsUserEnabled = true; //trait/чертa
 
                 _chartDd.ChartAreas.Add(areaDdPersent);
 
                 for (int i = 0; i < _chartDd.ChartAreas.Count; i++)
                 {
                     _chartDd.ChartAreas[i].BorderColor = Color.Black;
-                    _chartDd.ChartAreas[i].BackColor = Color.FromArgb(255, 27, 27, 27);
+                    _chartDd.ChartAreas[i].BackColor = Color.FromArgb(17, 18, 23);
                     _chartDd.ChartAreas[i].CursorY.LineColor = Color.Gainsboro;
                     _chartDd.ChartAreas[i].CursorX.LineColor = Color.Black;
                     _chartDd.ChartAreas[i].AxisX.TitleForeColor = Color.Gainsboro;
@@ -1304,6 +1287,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// sketch out a drawdown chart
         /// прорисовать чарт для просадки
         /// </summary>
         /// <param name="positionsAll"></param>
@@ -1351,7 +1335,7 @@ namespace OsEngine.Journal
             }
 
             _chartDd.Series.Add(drowDownPunct);
-
+            // dd in %
             // дд в %
 
             List<decimal> ddPepcent = new decimal[positionsAll.Count].ToList();
@@ -1392,6 +1376,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// Click on the chart with max drawdown
         /// клик по чарту с макс просадкой
         /// </summary>
         void _chartDd_Click(object sender, EventArgs e)
@@ -1441,20 +1426,23 @@ namespace OsEngine.Journal
                 _chartDd.Series[i].Points[index].LabelBackColor = Color.Black;
             }
         }
-
-// позиции
+        // positions
+        // позиции
 
         /// <summary>
+        /// open position table
         /// таблица открытых позиций
         /// </summary>
         private DataGridView _openPositionGrid;
 
         /// <summary>
+        /// closed position table
         /// таблица закрытых позиций
         /// </summary>
         private DataGridView _closePositionGrid;
 
         /// <summary>
+        /// create tables for positions
         /// создать таблицы для позиций
         /// </summary>
         private void CreatPositionTables()
@@ -1471,162 +1459,15 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// create a table
         /// создать таблицу
         /// </summary>
-        /// <returns>таблица для прорисовки на ней позиций</returns>
+        /// <returns>table for drawing positions on it/таблица для прорисовки на ней позиций</returns>
         private DataGridView CreateNewTable()
         {
             try
             {
-                DataGridView newGrid = new DataGridView();
-
-                newGrid.AllowUserToOrderColumns = false;
-                newGrid.AllowUserToResizeRows = false;
-                newGrid.AllowUserToDeleteRows = false;
-                newGrid.AllowUserToAddRows = false;
-                newGrid.RowHeadersVisible = false;
-                newGrid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-                newGrid.MultiSelect = false;
-               
-
-                DataGridViewCellStyle style = new DataGridViewCellStyle();
-                style.Alignment = DataGridViewContentAlignment.BottomRight;
-
-                DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
-                cell0.Style = style;
-
-                DataGridViewColumn colum0 = new DataGridViewColumn();
-                colum0.CellTemplate = cell0;
-                colum0.HeaderText = @"Номер";
-                colum0.ReadOnly = true;
-                colum0.Width = 50;
-                newGrid.Columns.Add(colum0);
-
-                DataGridViewColumn colum01 = new DataGridViewColumn();
-                colum01.CellTemplate = cell0;
-                colum01.HeaderText = @"Время отк.";
-                colum01.ReadOnly = true;
-                colum01.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-                newGrid.Columns.Add(colum01);
-
-                DataGridViewColumn colum02 = new DataGridViewColumn();
-                colum02.CellTemplate = cell0;
-                colum02.HeaderText = @"Время зак.";
-                colum02.ReadOnly = true;
-                colum02.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-                newGrid.Columns.Add(colum02);
-
-                DataGridViewColumn colu = new DataGridViewColumn();
-                colu.CellTemplate = cell0;
-                colu.HeaderText = @"Бот";
-                colu.ReadOnly = true;
-                colu.Width = 70;
-
-                newGrid.Columns.Add(colu);
-
-                DataGridViewColumn colum1 = new DataGridViewColumn();
-                colum1.CellTemplate = cell0;
-                colum1.HeaderText = @"Инструмент";
-                colum1.ReadOnly = true;
-                colum1.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
-                newGrid.Columns.Add(colum1);
-
-                DataGridViewColumn colum2 = new DataGridViewColumn();
-                colum2.CellTemplate = cell0;
-                colum2.HeaderText = @"Напр.";
-                colum2.ReadOnly = true;
-                colum2.Width = 40;
-
-                newGrid.Columns.Add(colum2);
-
-                DataGridViewColumn colum3 = new DataGridViewColumn();
-                colum3.CellTemplate = cell0;
-                colum3.HeaderText = @"Cостояние";
-                colum3.ReadOnly = true;
-                colum3.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
-                newGrid.Columns.Add(colum3);
-
-                DataGridViewColumn colum4 = new DataGridViewColumn();
-                colum4.CellTemplate = cell0;
-                colum4.HeaderText = @"Объём";
-                colum4.ReadOnly = true;
-                colum4.Width = 60;
-
-                newGrid.Columns.Add(colum4);
-
-                DataGridViewColumn colum45 = new DataGridViewColumn();
-                colum45.CellTemplate = cell0;
-                colum45.HeaderText = @"Текущий";
-                colum45.ReadOnly = true;
-                colum45.Width = 60;
-
-                newGrid.Columns.Add(colum45);
-
-                DataGridViewColumn colum5 = new DataGridViewColumn();
-                colum5.CellTemplate = cell0;
-                colum5.HeaderText = @"Ожидает";
-                colum5.ReadOnly = true;
-                colum5.Width = 60;
-
-                newGrid.Columns.Add(colum5);
-
-                DataGridViewColumn colum6 = new DataGridViewColumn();
-                colum6.CellTemplate = cell0;
-                colum6.HeaderText = @"Цена входа";
-                colum6.ReadOnly = true;
-                colum6.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
-                newGrid.Columns.Add(colum6);
-
-                DataGridViewColumn colum61 = new DataGridViewColumn();
-                colum61.CellTemplate = cell0;
-                colum61.HeaderText = @"Цена выхода";
-                colum61.ReadOnly = true;
-                colum61.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
-                newGrid.Columns.Add(colum61);
-
-                DataGridViewColumn colum8 = new DataGridViewColumn();
-                colum8.CellTemplate = cell0;
-                colum8.HeaderText = @"Прибыль";
-                colum8.ReadOnly = true;
-                colum8.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
-                newGrid.Columns.Add(colum8);
-
-                DataGridViewColumn colum9 = new DataGridViewColumn();
-                colum9.CellTemplate = cell0;
-                colum9.HeaderText = @"СтопАктивация";
-                colum9.ReadOnly = true;
-                colum9.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
-                newGrid.Columns.Add(colum9);
-
-                DataGridViewColumn colum10 = new DataGridViewColumn();
-                colum10.CellTemplate = cell0;
-                colum10.HeaderText = @"СтопЦена";
-                colum10.ReadOnly = true;
-                colum10.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
-                newGrid.Columns.Add(colum10);
-
-                DataGridViewColumn colum11 = new DataGridViewColumn();
-                colum11.CellTemplate = cell0;
-                colum11.HeaderText = @"ПрофитАктивация";
-                colum11.ReadOnly = true;
-                colum11.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
-                newGrid.Columns.Add(colum11);
-
-                DataGridViewColumn colum12 = new DataGridViewColumn();
-                colum12.CellTemplate = cell0;
-                colum12.HeaderText = @"ПрофитЦена";
-                colum12.ReadOnly = true;
-                colum12.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
-                newGrid.Columns.Add(colum12);
+                DataGridView newGrid = DataGridFactory.GetDataGridPosition();
 
                 return newGrid;
             }
@@ -1638,10 +1479,11 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// take a row for the table representing the position
         /// взять строку для таблицы представляющую позицию
         /// </summary>
-        /// <param name="position">позиция</param>
-        /// <returns>строка для таблицы</returns>
+        /// <param name="position">position/позиция</param>
+        /// <returns>table row/строка для таблицы</returns>
         private DataGridViewRow GetRow(Position position)
         {
             if (position == null)
@@ -1651,36 +1493,16 @@ namespace OsEngine.Journal
 
             try
             {
-                DataGridViewCellStyle styleDefolt = new DataGridViewCellStyle();
-
+                DataGridViewRow nRow = new DataGridViewRow();
 
                 if (position.ProfitPortfolioPunkt > 0)
                 {
-                    styleDefolt.BackColor = Color.DarkSeaGreen;
-                    styleDefolt.SelectionBackColor = Color.SeaGreen;
+                    nRow.DefaultCellStyle.ForeColor = Color.FromArgb(57, 157, 54);
                 }
-                else if (position.ProfitPortfolioPunkt < 0)
+                else if (position.ProfitPortfolioPunkt <= 0)
                 {
-                    styleDefolt.BackColor = Color.LightSalmon;
-                    styleDefolt.SelectionBackColor = Color.Salmon;
+                    nRow.DefaultCellStyle.ForeColor = Color.FromArgb(254, 84, 0);
                 }
-
-                DataGridViewCellStyle styleSide = new DataGridViewCellStyle();
-
-                if (position.Direction == Side.Buy)
-                {
-                    styleSide.BackColor = Color.DodgerBlue;
-                    styleSide.SelectionBackColor = Color.DodgerBlue;
-                }
-                else
-                {
-                    styleSide.BackColor = Color.DarkOrange;
-                    styleSide.SelectionBackColor = Color.DarkOrange;
-                }
-
-                DataGridViewRow nRow = new DataGridViewRow();
-
-                nRow.DefaultCellStyle = styleDefolt;
 
                 nRow.Cells.Add(new DataGridViewTextBoxCell());
                 nRow.Cells[0].Value = position.Number;
@@ -1699,7 +1521,17 @@ namespace OsEngine.Journal
 
                 nRow.Cells.Add(new DataGridViewTextBoxCell());
                 nRow.Cells[5].Value = position.Direction;
-                nRow.Cells[5].Style = styleSide;
+
+                if (position.Direction == Side.Buy)
+                {
+                    nRow.Cells[5].Style.ForeColor = Color.DodgerBlue;
+                    //nRow.Cells[5].Style.SelectionBackColor = Color.DodgerBlue;
+                }
+                else
+                {
+                    nRow.Cells[5].Style.ForeColor = Color.DarkRed;
+                    //nRow.Cells[5].Style.SelectionBackColor = Color.DarkOrange;
+                }
 
                 nRow.Cells.Add(new DataGridViewTextBoxCell());
                 nRow.Cells[6].Value = position.State;
@@ -1744,6 +1576,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// Double-click on the table of open positions
         /// двойной клик по таблице открытых позиций
         /// </summary>
         void _openPositionGrid_DoubleClick(object sender, EventArgs e)
@@ -1762,6 +1595,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// Click on the table of open positions
         /// клик по таблице открытых позиций
         /// </summary>
         void _openPositionGrid_Click(object sender, EventArgs e)
@@ -1776,13 +1610,13 @@ namespace OsEngine.Journal
             {
                 MenuItem[] items = new MenuItem[3];
 
-                items[0] = new MenuItem { Text = @"Детализация" };
+                items[0] = new MenuItem { Text = OsLocalization.Journal.PositionMenuItem8 };
                 items[0].Click += OpenDealMoreInfo_Click;
 
-                items[1] = new MenuItem { Text = @"Удалить" };
+                items[1] = new MenuItem { Text = OsLocalization.Journal.PositionMenuItem9 };
                 items[1].Click += OpenDealDelete_Click;
 
-                items[2] = new MenuItem { Text = @"Очистить всё" };
+                items[2] = new MenuItem { Text = OsLocalization.Journal.PositionMenuItem10 };
                 items[2].Click += OpenDealClearAll_Click;
 
                 ContextMenu menu = new ContextMenu(items);
@@ -1797,6 +1631,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// open additional information on the position
         /// открыть дополнительную информацию по позиции
         /// </summary>
         void OpenDealMoreInfo_Click(object sender, EventArgs e)
@@ -1815,6 +1650,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// Delete position
         /// удалить позицию
         /// </summary>
         void OpenDealDelete_Click(object sender, EventArgs e)
@@ -1835,6 +1671,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// clear out the open positions
         /// очистить открытые позиции
         /// </summary>
         void OpenDealClearAll_Click(object sender, EventArgs e)
@@ -1861,6 +1698,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// Draw open positions on the table
         /// прорисовать открытые позиции на таблице
         /// </summary>
         private void PaintOpenPositionGrid(List<Position> positionsAll)
@@ -1875,10 +1713,11 @@ namespace OsEngine.Journal
                 }
             }
         }
-
-// позиции закрытые
+        // closed positions
+        // позиции закрытые
 
         /// <summary>
+        /// Double-click on the closed seat table
         /// двойной клик по таблице закрытых седлок
         /// </summary>
         void _closePositionGrid_DoubleClick(object sender, EventArgs e)
@@ -1897,6 +1736,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// Click on the table of closed transactions
         /// клик по таблице закрытых сделок
         /// </summary>
         void _closePositionGrid_Click(object sender, EventArgs e)
@@ -1911,16 +1751,16 @@ namespace OsEngine.Journal
             {
                 MenuItem[] items = new MenuItem[4];
 
-                items[0] = new MenuItem { Text = @"Детализация" };
+                items[0] = new MenuItem { Text = OsLocalization.Journal.PositionMenuItem8 };
                 items[0].Click += CloseDealMoreInfo_Click;
 
-                items[1] = new MenuItem { Text = @"Удалить" };
+                items[1] = new MenuItem { Text = OsLocalization.Journal.PositionMenuItem9 };
                 items[1].Click += CloseDealDelete_Click;
 
-                items[2] = new MenuItem { Text = @"Очистить всё" };
+                items[2] = new MenuItem { Text = OsLocalization.Journal.PositionMenuItem10 };
                 items[2].Click += CloseDealClearAll_Click;
 
-                items[3] = new MenuItem { Text = @"Сохранить в файл" };
+                items[3] = new MenuItem { Text = OsLocalization.Journal.PositionMenuItem11 };
                 items[3].Click += CloseDealSaveInFile_Click;
 
                 ContextMenu menu = new ContextMenu(items);
@@ -1935,6 +1775,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// save information about closed transactions to a file
         /// сохранить в файл информацию о закрытых сделках
         /// </summary>
         void CloseDealSaveInFile_Click(object sender, EventArgs e)
@@ -1947,28 +1788,28 @@ namespace OsEngine.Journal
 
                 if (string.IsNullOrEmpty(myDialog.FileName))
                 {
-                    System.Windows.Forms.MessageBox.Show(@"Необходимо выбрать файл для сохранения!");
+                    System.Windows.Forms.MessageBox.Show(OsLocalization.Journal.Message1);
                     return;
                 }
 
                 StringBuilder workSheet = new StringBuilder();
-                workSheet.Append("Номер;");
-                workSheet.Append("Время отк.;");
-                workSheet.Append("Время зак.;");
-                workSheet.Append("Бот;");
-                workSheet.Append("Инструмент;");
-                workSheet.Append("Напр.;");
-                workSheet.Append("Cостояние;");
-                workSheet.Append("Объём;");
-                workSheet.Append("Текущий;");
-                workSheet.Append("Ожидает;");
-                workSheet.Append("Цена входа;");
-                workSheet.Append("Цена выхода;");
-                workSheet.Append("Прибыль;");
-                workSheet.Append("СтопАктивация;");
-                workSheet.Append("СтопЦена;");
-                workSheet.Append("ПрофитАктивация;");
-                workSheet.Append("ПрофитЦена\r\n");
+                workSheet.Append(OsLocalization.Entity.PositionColumn1);
+                workSheet.Append(OsLocalization.Entity.PositionColumn2);
+                workSheet.Append(OsLocalization.Entity.PositionColumn3);
+                workSheet.Append(OsLocalization.Entity.PositionColumn4);
+                workSheet.Append(OsLocalization.Entity.PositionColumn5);
+                workSheet.Append(OsLocalization.Entity.PositionColumn6);
+                workSheet.Append(OsLocalization.Entity.PositionColumn7);
+                workSheet.Append(OsLocalization.Entity.PositionColumn8);
+                workSheet.Append(OsLocalization.Entity.PositionColumn9);
+                workSheet.Append(OsLocalization.Entity.PositionColumn10);
+                workSheet.Append(OsLocalization.Entity.PositionColumn11);
+                workSheet.Append(OsLocalization.Entity.PositionColumn12);
+                workSheet.Append(OsLocalization.Entity.PositionColumn13);
+                workSheet.Append(OsLocalization.Entity.PositionColumn14);
+                workSheet.Append(OsLocalization.Entity.PositionColumn15);
+                workSheet.Append(OsLocalization.Entity.PositionColumn16);
+                workSheet.Append(OsLocalization.Entity.PositionColumn17 +"\r\n");
 
                 for (int i = 0; i < _closePositionGrid.Rows.Count; i++)
                 {
@@ -2011,6 +1852,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// open additional information on the position
         /// открыть дополнительную информацию по позиции
         /// </summary>
         void CloseDealMoreInfo_Click(object sender, EventArgs e)
@@ -2029,6 +1871,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// delete position
         /// удалить позицию
         /// </summary>
         void CloseDealDelete_Click(object sender, EventArgs e)
@@ -2049,6 +1892,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// clear closed positions
         /// очистить закрытые позиции
         /// </summary>
         void CloseDealClearAll_Click(object sender, EventArgs e)
@@ -2075,6 +1919,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// Draw closed positions on the table
         /// прорисовать закрытые позиции на таблице
         /// </summary>
         private void PaintClosePositionGrid(List<Position> positionsAll)
@@ -2089,10 +1934,11 @@ namespace OsEngine.Journal
                 }
             }
         }
-
-// сообщения в лог
+        // messages to the log
+        // сообщения в лог
 
         /// <summary>
+        /// send a new message to the top
         /// выслать новое сообщение на верх
         /// </summary>
         private void SendNewLogMessage(string message, LogMessageType type)
@@ -2104,6 +1950,7 @@ namespace OsEngine.Journal
         }
 
         /// <summary>
+        /// outgoing message for log
         /// исходящее сообщение для лога
         /// </summary>
         public event Action<string, LogMessageType> LogMessageEvent;
@@ -2111,6 +1958,7 @@ namespace OsEngine.Journal
     }
 
     /// <summary>
+    /// log storage class
     /// класс хранилище журналов
     /// </summary>
     public class BotPanelJournal
@@ -2121,6 +1969,7 @@ namespace OsEngine.Journal
     }
 
     /// <summary>
+    /// log storage class
     /// класс хранилище журналов
     /// </summary>
     public class BotTabJournal
@@ -2131,6 +1980,7 @@ namespace OsEngine.Journal
     }
 
     /// <summary>
+    /// the class of DataGridView. modification of cells allows working with the thickness of the cell boundary
     /// класс модификации ячеек DataGridView. позволяет работать с толщиной границы ячейки
     /// </summary>
     internal class CustomDataGridViewCell : DataGridViewTextBoxCell
@@ -2177,16 +2027,19 @@ namespace OsEngine.Journal
     }
 
     /// <summary>
+    /// tool volume over time
     /// объём во времени по инструменту
     /// </summary>
     public class VolumeSecurity
     {
         /// <summary>
+        /// volume over time
         /// массив данных по объёму во времени
         /// </summary>
         public List<decimal> Volume;
 
         /// <summary>
+        /// paper name
         /// название бумаги
         /// </summary>
         public string Security;

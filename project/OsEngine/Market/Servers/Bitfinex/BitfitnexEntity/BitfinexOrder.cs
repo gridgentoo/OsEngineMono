@@ -1,16 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace OsEngine.Market.Servers.Bitfinex.BitfitnexEntity
+﻿namespace OsEngine.Market.Servers.Bitfinex.BitfitnexEntity
 {
     class BitfinexOrder
     {
         public long OrderId { get; set; }
         public string Symbol { get; set; }
-        public decimal Price { get; set; }
+        public string Price { get; set; }
         public decimal AverageExecutionPrice { get; set; }
         public string Side { get; set; }
         public string Type { get; set; }

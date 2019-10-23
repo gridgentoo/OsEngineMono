@@ -1,11 +1,17 @@
-﻿using System.Windows;
+﻿/*
+ * Your rights to use code governed by this license http://o-s-a.net/doc/license_simple_engine.pdf
+ *Ваши права на использования кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
+*/
+using System.Windows;
 using System.Windows.Forms;
+using OsEngine.Language;
 using OsEngine.OsTrader.Panels;
 using TextBox = System.Windows.Forms.TextBox;
 
 namespace OsEngine.Charts.CandleChart.Indicators
 {
     /// <summary>
+    /// Interaction logic  for PivotPointsRobotUi.xaml
     /// Логика взаимодействия для PivotPointsRobotUi.xaml
     /// </summary>
     public partial class PivotPointsUi : Window
@@ -13,6 +19,7 @@ namespace OsEngine.Charts.CandleChart.Indicators
         private PivotPoints _pivotPoints;
 
         /// <summary>
+        /// whether indicator settings have been changed
         /// изменялись ли настройки индикатора
         /// </summary>
         public bool IsChange;
@@ -42,6 +49,9 @@ namespace OsEngine.Charts.CandleChart.Indicators
 
             HostS3.Child = new TextBox();
             HostS3.Child.BackColor = _pivotPoints.ColorS3;
+
+            CheckBoxPaintOnOff.Content = OsLocalization.Charts.LabelPaintIntdicatorIsVisible;
+            ButtonAccept.Content = OsLocalization.Charts.LabelButtonIndicatorAccept;
 
         }
 

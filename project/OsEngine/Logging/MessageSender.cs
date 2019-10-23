@@ -1,19 +1,32 @@
 ﻿/*
+ *Your rights to use the code are governed by this license https://github.com/AlexWan/OsEngine/blob/master/LICENSE
  *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
 using System;
 using System.IO;
-using OsEngine.Market.Servers;
+using OsEngine.Market;
 
 namespace OsEngine.Logging
 {
     /// <summary>
+    /// distribution manager
     /// менеджер рассылки
     /// </summary>
     public class MessageSender
     {
+ // distribution settings
  // настройки рассылки
+
+        public bool WebhookSendOn;
+
+        public bool WebhookSystemSendOn;
+        public bool WebhookSignalSendOn;
+        public bool WebhookErrorSendOn;
+        public bool WebhookConnectSendOn;
+        public bool WebhookTradeSendOn;
+        public bool WebhookNoNameSendOn;
+
         public bool MailSendOn;
 
         public bool MailSystemSendOn;
@@ -32,15 +45,23 @@ namespace OsEngine.Logging
         public bool SmsTradeSendOn;
         public bool SmsNoNameSendOn;
 
-        private string _name; // имя
+        private string _name; // name / имя
 
-        public MessageSender(string name)
+        /// <summary>
+        /// program that created the object
+        /// программа создавшая объект
+        /// </summary>
+        private StartProgram _startProgram;
+
+        public MessageSender(string name, StartProgram startProgram)
         {
+            _startProgram = startProgram;
             _name = name;
             Load();
         }
 
         /// <summary>
+        /// show settings window
         /// показать окно настроек
         /// </summary>
         public void ShowDialog()
@@ -50,6 +71,7 @@ namespace OsEngine.Logging
         }
 
         /// <summary>
+        /// download
         /// загрузить
         /// </summary>
         private void Load() 
@@ -81,6 +103,15 @@ namespace OsEngine.Logging
                     SmsTradeSendOn = Convert.ToBoolean(reader.ReadLine());
                     SmsNoNameSendOn = Convert.ToBoolean(reader.ReadLine());
 
+                    WebhookSendOn = Convert.ToBoolean(reader.ReadLine());
+
+                    WebhookSystemSendOn = Convert.ToBoolean(reader.ReadLine());
+                    WebhookSignalSendOn = Convert.ToBoolean(reader.ReadLine());
+                    WebhookErrorSendOn = Convert.ToBoolean(reader.ReadLine());
+                    WebhookConnectSendOn = Convert.ToBoolean(reader.ReadLine());
+                    WebhookTradeSendOn = Convert.ToBoolean(reader.ReadLine());
+                    WebhookNoNameSendOn = Convert.ToBoolean(reader.ReadLine());
+
                     reader.Close();
                 }
             }
@@ -92,6 +123,7 @@ namespace OsEngine.Logging
         }
 
         /// <summary>
+        /// save
         /// сохранить
         /// </summary>
         public void Save() 
@@ -111,12 +143,21 @@ namespace OsEngine.Logging
 
                     writer.WriteLine(SmsSendOn);
 
-                   writer.WriteLine( SmsSystemSendOn);
+                    writer.WriteLine(SmsSystemSendOn);
                     writer.WriteLine(SmsSignalSendOn);
                     writer.WriteLine(SmsErrorSendOn);
                     writer.WriteLine(SmsConnectSendOn);
                     writer.WriteLine(SmsTradeSendOn);
                     writer.WriteLine(SmsNoNameSendOn);
+
+                    writer.WriteLine(WebhookSendOn);
+
+                    writer.WriteLine(WebhookSystemSendOn);
+                    writer.WriteLine(WebhookSignalSendOn);
+                    writer.WriteLine(WebhookErrorSendOn);
+                    writer.WriteLine(WebhookConnectSendOn);
+                    writer.WriteLine(WebhookTradeSendOn);
+                    writer.WriteLine(WebhookNoNameSendOn);
                     writer.Close();
                 }
             }
@@ -127,6 +168,7 @@ namespace OsEngine.Logging
         }
 
         /// <summary>
+        /// delete
         /// удалить
         /// </summary>
         public void Delete() 
@@ -138,14 +180,45 @@ namespace OsEngine.Logging
         }
 
         /// <summary>
+        /// Send message. If this message type is subscribed and distribution servers are configured, the message will be sent
+        /// If test server is enabled, the message will not be sent
         /// Отправить сообщение. Если такой тип сообщений подписан на рассылку и сервера рассылки настроены, сообщение будет отправлено
         /// Если включен тестовый сервер - сообщение не будет отправленно
         /// </summary>
         public void AddNewMessage(LogMessage message)
         {
-            if (ServerMaster.StartProgram != ServerStartProgramm.IsOsTrader)
+            if (_startProgram != StartProgram.IsOsTrader)
             {
                 return;
+            }
+
+            if (WebhookSendOn)
+            {
+                if (message.Type == LogMessageType.Connect &&
+                    WebhookConnectSendOn)
+                {
+                    ServerWebhook.GetServer().Send(message, _name);
+                }
+                if (message.Type == LogMessageType.Error &&
+                    WebhookErrorSendOn)
+                {
+                    ServerWebhook.GetServer().Send(message, _name);
+                }
+                if (message.Type == LogMessageType.Signal &&
+                    WebhookSignalSendOn)
+                {
+                    ServerWebhook.GetServer().Send(message, _name);
+                }
+                if (message.Type == LogMessageType.System &&
+                    WebhookSystemSendOn)
+                {
+                    ServerWebhook.GetServer().Send(message, _name);
+                }
+                if (message.Type == LogMessageType.Trade &&
+                    WebhookTradeSendOn)
+                {
+                    ServerWebhook.GetServer().Send(message, _name);
+                }
             }
 
             if (MailSendOn)

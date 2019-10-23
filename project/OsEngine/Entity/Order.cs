@@ -1,5 +1,6 @@
 ﻿/*
- *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
+ * Your rights to use code governed by this license http://o-s-a.net/doc/license_simple_engine.pdf
+ * Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
 using System;
@@ -7,11 +8,12 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using OsEngine.Market.Servers;
+using OsEngine.Market;
 
 namespace OsEngine.Entity
 {
     /// <summary>
+    /// order
     /// ордер
     /// </summary>
     public class Order
@@ -22,41 +24,49 @@ namespace OsEngine.Entity
             TimeCreate = DateTime.MinValue;
             TimeCallBack = DateTime.MinValue;
             TimeCancel = DateTime.MinValue;
+            TimeDone =  DateTime.MinValue;
             NumberMarket = "";
-            Side = Side.UnKnown;
+            Side = Side.None;
         }
 
         /// <summary>
+        /// order number in the robot
         /// номер ордера в роботе
         /// </summary>
-        public int NumberUser;  
-        
+        public int NumberUser;
+
         /// <summary>
+        /// order number on the exchange
         /// номер ордера на бирже
         /// </summary>
         public string NumberMarket;
 
         /// <summary>
+        /// instrument code for which the transaction took place
         /// код инструмента по которому прошла сделка
         /// </summary>
         public string SecurityNameCode;
 
         /// <summary>
+        /// account number to which the order belongs
         /// номер счёта которому принадлежит ордер
         /// </summary>
         public string PortfolioNumber;
 
         /// <summary>
+        /// direction
         /// направление
         /// </summary>
         public Side Side;
 
         /// <summary>
+        /// bid price
         /// цена заявки
         /// </summary>
         public decimal Price;
 
         /// <summary>
+        /// real price
         /// цена исполнения
         /// </summary>
         public decimal PriceReal
@@ -68,11 +78,13 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// volume
         /// объём
         /// </summary>
         public decimal Volume;
 
         /// <summary>
+        /// execute volume
         /// объём исполнившийся
         /// </summary>
         public decimal VolumeExecute
@@ -102,6 +114,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// order status: None, Pending, Done, Patrial, Fail
         /// статус ордера: None, Pending, Done, Patrial, Fail
         /// </summary>
         public OrderStateType State 
@@ -115,31 +128,43 @@ namespace OsEngine.Entity
 
         private OrderStateType _state;
         /// <summary>
+        /// order price type. Limit, Market
         /// тип цены ордера. Limit, Market
         /// </summary>
         public OrderPriceType TypeOrder;
 
         /// <summary>
+        /// user comment
         /// комментарий пользователя
         /// </summary>
         public string Comment;
 
         /// <summary>
-        /// время выставления ордера на биржу
+        /// time of the first response from the stock exchange on the order. Server time
+        /// время первого отклика от биржи по ордеру. Время севрера.
         /// </summary>
         public DateTime TimeCallBack;
-        
+
         /// <summary>
-        /// время снятия ордера из системы
+        /// time of order removal from the system. Server time
+        /// время снятия ордера из системы. Время сервера
         /// </summary>
         public DateTime TimeCancel;
 
         /// <summary>
-        /// время создания ордера в OsApi
+        /// order execution time. Server time
+        /// время исполнения ордера. Время сервера
+        /// </summary>
+        public DateTime TimeDone;
+
+        /// <summary>
+        /// order creation time in OsApi. Server time
+        /// время создания ордера в OsApi. Время сервера
         /// </summary>
         public DateTime TimeCreate;
 
         /// <summary>
+        /// bidding rate
         /// скорость выставления заявки
         /// </summary>
         public TimeSpan TimeRoundTrip
@@ -157,6 +182,8 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// /// time when the order was the first transaction
+        /// if there are no deals on the order yet, it will return the time to create the order
         /// время когда по ордеру прошла первая сделка
         /// если сделок по ордеру ещё нет, вернёт время создания ордера
         /// </summary>
@@ -175,27 +202,31 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// lifetime on the exchange, after which the order must be withdrawn
         /// время жизни на бирже, после чего ордер надо отзывать
         /// </summary>
         public TimeSpan LifeTime;
 
         /// <summary>
+        /// /// flag saying that this order was created to close by stop or profit order
+        /// the tester needs to perform it adequately
         /// флаг,говорящий о том что этот ордер был создан для закрытия по стоп или профит приказу
         /// нужен тестеру для адекватного его исполнения
         /// </summary>
         public bool IsStopOrProfit;
 
         public ServerType ServerType;
- 
-
-// сделки, которыми открывался ордер и рассчёт цены исполнения ордера
+        // deals with which the order was opened and calculation of the order execution price
+        // сделки, которыми открывался ордер и рассчёт цены исполнения ордера
 
         /// <summary>
+        /// order trades
         /// сделки ордера
         /// </summary>
         private List<MyTrade> _trades;
 
         /// <summary>
+        /// heck the ownership of the transaction to this order
         /// проверить принадлежность сделки этому ордеру
         /// </summary>
         public void SetTrade(MyTrade trade)
@@ -214,7 +245,9 @@ namespace OsEngine.Entity
                 foreach (var tradeInArray in _trades)
                 {
                     if (tradeInArray.NumberTrade == trade.NumberTrade)
-                    { // такая заявка уже в хранилище, глупое АПИ травит токсичными данными, выходим
+                    {
+                        // / such an application is already in storage, a stupid API is poisoning with toxic data, we exit
+                        // такая заявка уже в хранилище, глупое АПИ травит токсичными данными, выходим
                         return;
                     }
                 }
@@ -240,6 +273,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// take the average order execution price
         /// взять среднюю цену исполнения ордера
         /// </summary>
         public decimal GetMidlePrice()
@@ -269,6 +303,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// take the time of execution of the last trade on the order
         /// взять время исполнения последнего трейда по ордеру
         /// </summary>
         public DateTime GetLastTradeTime()
@@ -282,6 +317,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// whether the trades of this order came to the array
         /// пришли ли трейды этого ордера в массив
         /// </summary>
         public bool TradesIsComing
@@ -301,6 +337,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// take the string to save
         /// взять строку для сохранения
         /// </summary>
         public StringBuilder GetStringForSave()
@@ -327,8 +364,10 @@ namespace OsEngine.Entity
             result.Append(TimeCreate.ToString(new CultureInfo("ru-RU")) + "@");
             result.Append(TimeCancel.ToString(new CultureInfo("ru-RU")) + "@");
             result.Append(TimeCallBack.ToString(new CultureInfo("ru-RU")) + "@");
+            
             result.Append(LifeTime + "@");
-        // сделки, которыми открывался ордер и рассчёт цены исполнения ордера
+            // deals with which the order was opened and the order execution price was calculated
+            // сделки, которыми открывался ордер и рассчёт цены исполнения ордера
 
             if (_trades == null)
             {
@@ -343,12 +382,15 @@ namespace OsEngine.Entity
             }
             result.Append("@");
 
-            result.Append(Comment);
+            result.Append(Comment + "@");
+
+            result.Append(TimeDone.ToString(new CultureInfo("ru-RU")) + "@");
 
             return result;
         }
 
         /// <summary>
+        /// load order from incoming line
         /// загрузить ордер из входящей строки
         /// </summary>
         public void SetOrderFromString(string saveString)
@@ -360,10 +402,10 @@ namespace OsEngine.Entity
 
             NumberMarket = saveArray[2];
             Enum.TryParse(saveArray[3], true, out Side);
-            Price = Convert.ToDecimal(saveArray[4].Replace(",", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
-            Volume = Convert.ToDecimal(saveArray[6].Replace(",", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
-            VolumeExecute = Convert.ToDecimal(saveArray[7].Replace(",", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
+            Price = saveArray[4].ToDecimal();
 
+            Volume = saveArray[6].ToDecimal();
+            VolumeExecute = saveArray[7].ToDecimal();
 
             Enum.TryParse(saveArray[8], true, out _state);
             Enum.TryParse(saveArray[9], true, out TypeOrder);
@@ -376,7 +418,9 @@ namespace OsEngine.Entity
             TimeCreate = Convert.ToDateTime(saveArray[13]);
             TimeCancel = Convert.ToDateTime(saveArray[14]);
             TimeCallBack = Convert.ToDateTime(saveArray[15]);
+
             TimeSpan.TryParse(saveArray[16], out LifeTime);
+            // deals with which the order was opened and the order execution price was calculated
             // сделки, которыми открывался ордер и рассчёт цены исполнения ордера
 
             if (saveArray[17] == "null")
@@ -396,66 +440,80 @@ namespace OsEngine.Entity
                 }
             }
             Comment = saveArray[18];
+            TimeDone = Convert.ToDateTime(saveArray[19]);
         }
     }
 
 
     /// <summary>
+    /// price type for order
     /// тип цены для ордера
     /// </summary>
     public enum OrderPriceType
     {
         /// <summary>
+        /// limit order. Those. bid at a certain price
         /// лимитная заявка. Т.е. заявка по определённой цене
         /// </summary>
         Limit,
 
         /// <summary>
+        /// market application. Those. application at any price
         /// рыночная заявка. Т.е. заявка по любой цене
         /// </summary>
         Market,
 
         /// <summary>
+        /// iceberg application. Those. An application whose volume is not fully visible in the glass.
         /// айсберг заявка. Т.е. заявка объём которой полностью не виден в стакане.
         /// </summary>
         Iceberg
     }
 
     /// <summary>
+    /// Order status
     /// статус Ордера
     /// </summary>
     public enum OrderStateType
     {
         /// <summary>
-        /// принята биржей и выставленна в систему
-        /// </summary>
-        Activ,
-        /// <summary>
+        /// none
         /// отсутствует
         /// </summary>
         None,
 
         /// <summary>
+        /// accepted by the exchange and exhibited in the system
+        /// принята биржей и выставленна в систему
+        /// </summary>
+        Activ,
+
+        /// <summary>
+        /// waiting for registration
         /// ожидает регистрации
         /// </summary>
         Pending,
 
         /// <summary>
+        /// done
         /// исполнен
         /// </summary>
         Done,
 
         /// <summary>
+        /// partitial done
         /// исполнен частично
         /// </summary>
         Patrial,
 
         /// <summary>
+        /// error
         /// произошла ошибка
         /// </summary>
         Fail,
 
         /// <summary>
+        /// cancel
         /// отменён
         /// </summary>
         Cancel

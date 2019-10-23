@@ -1,17 +1,20 @@
 ﻿/*
+ *Your rights to use the code are governed by this license https://github.com/AlexWan/OsEngine/blob/master/LICENSE
  *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
 using System.Windows;
+using OsEngine.Language;
 
 namespace OsEngine.Logging
 {
     /// <summary>
+    /// window of mailing server settings
     /// Окно настроек сервера почтовой рассылки
     /// </summary>
     public partial class ServerMailDeliveryUi
     {
-         public ServerMailDeliveryUi() // конструктор
+         public ServerMailDeliveryUi() // constructor / конструктор
         {
             InitializeComponent();
 
@@ -29,17 +32,27 @@ namespace OsEngine.Logging
                 }
             }
 
+            ComboBoxMyMaster.Items.Add("Yandex");
+            ComboBoxMyMaster.Items.Add("Google");
+
             if (serverMail.Smtp == "smtp.yandex.ru")
             {
-                ComboBoxMyMaster.SelectedItem = "Яндекс";
+                ComboBoxMyMaster.SelectedItem = "Yandex";
             }
             else
             {
-                ComboBoxMyMaster.SelectedItem = "Гугл";
+                ComboBoxMyMaster.SelectedItem = "Google";
             }
+
+            Title = OsLocalization.Logging.TitleEmailServer;
+            ButtonAccept.Content = OsLocalization.Logging.Button1;
+            Label11.Content = OsLocalization.Logging.Label11;
+            Label12.Content = OsLocalization.Logging.Label12;
+            Label13.Content = OsLocalization.Logging.Label13;
+            Label14.Content = OsLocalization.Logging.Label14;
         }
 
-        private void buttonAccept_Click(object sender, RoutedEventArgs e) // принять
+        private void buttonAccept_Click(object sender, RoutedEventArgs e) // accept / принять
         {
             ServerMail serverMail = ServerMail.GetServer();
             serverMail.MyAdress = TextBoxMyAdress.Text;
@@ -82,7 +95,7 @@ namespace OsEngine.Logging
 
             serverMail.Adress = lockal2;
 
-            if (ComboBoxMyMaster.SelectedItem.ToString() == "Яндекс")
+            if (ComboBoxMyMaster.SelectedItem.ToString() == "Yandex")
             {
                 serverMail.Smtp = "smtp.yandex.ru";
             }

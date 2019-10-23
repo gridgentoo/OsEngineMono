@@ -1,9 +1,15 @@
-﻿using System;
+﻿/*
+ * Your rights to use code governed by this license http://o-s-a.net/doc/license_simple_engine.pdf
+ * Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
+*/
+
+using System;
 using System.Collections.Generic;
 
 namespace OsEngine.Entity
 {
     /// <summary>
+    /// parameter interface
     /// интерфейс для параметра
     /// </summary>
     public interface IIStrategyParameter
@@ -14,40 +20,46 @@ namespace OsEngine.Entity
         string Name { get; }
 
         /// <summary>
+        /// unique parameter name
         /// взять строку для сохранения
         /// </summary>
         string GetStringToSave();
 
         /// <summary>
         /// загрузить параметр из строки
+        /// загрузить параметр из строки
         /// </summary>
-        /// <param name="save">строка с сохранёнными параметрами</param>
+        /// <param name="save">line with saved parameters/строка с сохранёнными параметрами</param>
         void LoadParamFromString(string[] save);
 
         /// <summary>
+        /// parameter type
         /// тип параметра
         /// </summary>
         StrategyParameterType Type { get; }
 
         /// <summary>
+        /// the parameter state has changed
         /// изменилось состояние параметра
         /// </summary>
         event Action ValueChange;
     }
 
     /// <summary>
+    /// Parameter for an Int strategy
     /// параметр для стратегии типа Int
     /// </summary>
     public class StrategyParameterInt : IIStrategyParameter
     {
         /// <summary>
+        /// constructor to create a parameter storing Int variables
         /// конструктор для создания параметра хранящего переменные типа Int
         /// </summary>
-        /// <param name="name">Имя параметра</param>
-        /// <param name="value">Значение по умолчанию</param>
-        /// <param name="start">Первое значение при оптимизации</param>
-        /// <param name="stop">Последнее значение при оптимизации</param>
-        /// <param name="step">Шаг изменения при оптимизации</param>
+        /// <param name="name">Parameter name/Имя параметра</param>
+        /// <param name="value">Default value/Значение по умолчанию</param>
+        /// <param name="start">First value in optimization/Первое значение при оптимизации</param>
+        /// <param name="stop">Last value during optimization/Последнее значение при оптимизации</param>
+        /// <param name="step">Step change in optimization/Шаг изменения при оптимизации</param>
         public StrategyParameterInt(string name, int value, int start, int stop, int step)
         {
             if (start > stop)
@@ -64,6 +76,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// closed constructor
         /// закрытый конструктор
         /// </summary>
         private StrategyParameterInt()
@@ -72,6 +85,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// unique parameter name
         /// уникальное имя параметра
         /// </summary>
         public string Name
@@ -81,6 +95,7 @@ namespace OsEngine.Entity
         private string _name;
 
         /// <summary>
+        /// save the line
         /// взять строку сохранения
         /// </summary>
         public string GetStringToSave()
@@ -92,6 +107,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// Load the parameter from the saved file
         /// загрузить параметр из сохранённого файла
         /// </summary>
         public void LoadParamFromString(string[] save)
@@ -100,6 +116,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// parameter type
         /// тип параметра
         /// </summary>
         public StrategyParameterType Type
@@ -108,6 +125,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// current value of the parameter of Int type
         /// текущее значение параметра типа Int
         /// </summary>
         public int ValueInt
@@ -132,6 +150,7 @@ namespace OsEngine.Entity
         private int _valueInt;
 
         /// <summary>
+        /// default value for the Int type parameter
         /// значение по умолчанию для параметра типа Int
         /// </summary>
         public int ValueIntDefolt
@@ -144,6 +163,7 @@ namespace OsEngine.Entity
         private int _valueIntDefolt;
 
         /// <summary>
+        /// starting value during optimization for the parameter of Int
         /// стартовое значение при оптимизации для параметра типа Int
         /// </summary>
         public int ValueIntStart
@@ -156,6 +176,7 @@ namespace OsEngine.Entity
         private int _valueIntStart;
 
         /// <summary>
+        /// the last value during optimization for the parameter of Int type
         /// последнее значение при оптимизации для параметра типа Int
         /// </summary>
         public int ValueIntStop
@@ -168,6 +189,7 @@ namespace OsEngine.Entity
         private int _valueIntStop;
 
         /// <summary>
+        /// incremental step for the Int type parameter 
         /// шаг приращения для параметра типа Int 
         /// </summary>
         public int ValueIntStep
@@ -180,25 +202,28 @@ namespace OsEngine.Entity
         private int _valueIntStep;
 
         /// <summary>
+        /// the parameter state has changed
         /// изменилось состояние параметра
         /// </summary>
         public event Action ValueChange;
     }
 
     /// <summary>
+    /// The parameter of the Decimal type strategy
     /// параметр стратегии типа Decimal
     /// </summary>
     public class StrategyParameterDecimal : IIStrategyParameter
     {
 
         /// <summary>
+        /// Designer for creating a parameter storing Decimal type variables
         /// конструктор для создания параметра хранящего переменные типа Decimal
         /// </summary>
-        /// <param name="name">Имя параметра</param>
-        /// <param name="value">Значение по умолчанию</param>
-        /// <param name="start">Первое значение при оптимизации</param>
-        /// <param name="stop">Последнее значение при оптимизации</param>
-        /// <param name="step">Шаг изменения при оптимизации</param>
+        /// <param name="name">Parameter name/Имя параметра</param>
+        /// <param name="value">Default value/Значение по умолчанию</param>
+        /// <param name="start">First value in optimization/Первое значение при оптимизации</param>
+        /// <param name="stop">last value in optimization/Последнее значение при оптимизации</param>
+        /// <param name="step">Step change in optimization/Шаг изменения при оптимизации</param>
         public StrategyParameterDecimal(string name, decimal value, decimal start, decimal stop, decimal step)
         {
             if (start > stop)
@@ -216,6 +241,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// blank. it is impossible to create a variable of StrategyParameter type with an empty constructor
         /// заглушка. нельзя создать переменную типа StrategyParameter с пустым конструктором
         /// </summary>
         private StrategyParameterDecimal()
@@ -224,6 +250,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// to take a line to save
         /// взять строку для сохранения
         /// </summary>
         public string GetStringToSave()
@@ -234,6 +261,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// download settings from the save file
         /// загрузить настройки из файла сохранения
         /// </summary>
         /// <param name="save"></param>
@@ -243,6 +271,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// Parameter name. Used to identify a parameter in the settings windows
         /// Название параметра. Используется для идентификации параметра в окнах настроек
         /// </summary>
         public string Name
@@ -252,6 +281,7 @@ namespace OsEngine.Entity
         private string _name;
 
         /// <summary>
+        /// parameter type
         /// тип параметра
         /// </summary>
         public StrategyParameterType Type
@@ -261,6 +291,7 @@ namespace OsEngine.Entity
         private StrategyParameterType _type;
 
         /// <summary>
+        /// current value of the Decimal parameter
         /// текущее значение параметра Decimal
         /// </summary>
         public decimal ValueDecimal
@@ -285,6 +316,7 @@ namespace OsEngine.Entity
         private decimal _valueDecimal;
 
         /// <summary>
+        /// default value for the Decimal type
         /// значение по умолчанию для параметра типа Decimal
         /// </summary>
         public decimal ValueDecimalDefolt
@@ -297,6 +329,7 @@ namespace OsEngine.Entity
         private decimal _valueDecimalDefolt;
 
         /// <summary>
+        /// initial value of the Decimal type parameter
         /// начальное значение параметра типа Decimal
         /// </summary>
         public decimal ValueDecimalStart
@@ -309,6 +342,7 @@ namespace OsEngine.Entity
         private decimal _valueDecimalStart;
 
         /// <summary>
+        /// the last value of the Decimal type parameter
         /// последнее значение параметра типа Decimal
         /// </summary>
         public decimal ValueDecimalStop
@@ -321,6 +355,7 @@ namespace OsEngine.Entity
         private decimal _valueDecimalStop;
 
         /// <summary>
+        /// incremental step of the Decimal type parameter
         /// шаг приращения параметра типа Decimal
         /// </summary>
         public decimal ValueDecimalStep
@@ -333,12 +368,14 @@ namespace OsEngine.Entity
         private decimal _valueDecimalStep;
 
         /// <summary>
+        /// event: the parameter has changed
         /// событие: параметр изменился
         /// </summary>
         public event Action ValueChange;
     }
 
     /// <summary>
+    /// Bool type strategy parameter
     /// параметр стратегии типа Bool
     /// </summary>
     public class StrategyParameterBool : IIStrategyParameter
@@ -351,6 +388,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// blank. it is impossible to create a variable of StrategyParameter type with an empty constructor
         /// заглушка. нельзя создать переменную типа StrategyParameter с пустым конструктором
         /// </summary>
         private StrategyParameterBool()
@@ -359,6 +397,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// to take a line to save
         /// взять строку для сохранения
         /// </summary>
         public string GetStringToSave()
@@ -369,6 +408,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        ///  download settings from the save file
         /// загрузить настройки из файла сохранения
         /// </summary>
         /// <param name="save"></param>
@@ -378,6 +418,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// Parameter name. Used to identify a parameter in the settings windows
         /// Название параметра. Используется для идентификации параметра в окнах настроек
         /// </summary>
         public string Name
@@ -387,6 +428,7 @@ namespace OsEngine.Entity
         private string _name;
 
         /// <summary>
+        /// parameter type
         /// тип параметра
         /// </summary>
         public StrategyParameterType Type
@@ -396,6 +438,7 @@ namespace OsEngine.Entity
         private StrategyParameterType _type;
 
         /// <summary>
+        /// parameter Boolean value
         /// значение булева параметра
         /// </summary>
         public bool ValueBool
@@ -420,6 +463,7 @@ namespace OsEngine.Entity
         private bool _valueBool;
 
         /// <summary>
+        /// default setting for the parameter boolean
         /// значение по умолчанию для булева параметра
         /// </summary>
         public bool ValueBoolDefolt
@@ -432,22 +476,25 @@ namespace OsEngine.Entity
         private bool _valueBoolDefolt;
 
         /// <summary>
+        /// event: the parameter has changed
         /// событие: параметр изменился
         /// </summary>
         public event Action ValueChange;
     }
 
     /// <summary>
+    /// A strategy parameter that stores a collection of strings
     /// параметр стратегии хранящий в себе коллекцию строк
     /// </summary>
     public class StrategyParameterString: IIStrategyParameter
     {
         /// <summary>
+        /// constructor to create a parameter storing variables of String type
         /// конструктор для создания параметра хранящего переменные типа String
         /// </summary>
-        /// <param name="name">Имя параметра</param>
-        /// <param name="value">Значение по умолчанию</param>
-        /// <param name="collection">Возможные варианты значений</param>
+        /// <param name="name">Parameter name/Имя параметра</param>
+        /// <param name="value">Default value/Значение по умолчанию</param>
+        /// <param name="collection">Possible value options/Возможные варианты значений</param>
         public StrategyParameterString(string name, string value, List<string> collection)
         {
             _name = name;
@@ -457,6 +504,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// blank. it is impossible to create a variable of StrategyParameter type with an empty constructor
         /// заглушка. нельзя создать переменную типа StrategyParameter с пустым конструктором
         /// </summary>
         private StrategyParameterString()
@@ -465,6 +513,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// to take a line to save
         /// взять строку для сохранения
         /// </summary>
         public string GetStringToSave()
@@ -476,6 +525,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// download settings from the save file
         /// загрузить настройки из файла сохранения
         /// </summary>
         /// <param name="save"></param>
@@ -485,6 +535,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// Parameter name. Used to identify a parameter in the settings windows
         /// Название параметра. Используется для идентификации параметра в окнах настроек
         /// </summary>
         public string Name
@@ -494,6 +545,7 @@ namespace OsEngine.Entity
         private string _name;
 
         /// <summary>
+        /// parameter type
         /// тип параметра
         /// </summary>
         public StrategyParameterType Type
@@ -503,6 +555,7 @@ namespace OsEngine.Entity
         private StrategyParameterType _type;
 
         /// <summary>
+        /// current value of the string type parameter
         /// текущее значение параметра типа string
         /// </summary>
         public string ValueString
@@ -540,32 +593,38 @@ namespace OsEngine.Entity
         private List<string> _setStringValues;
 
         /// <summary>
+        /// event: the parameter has changed
         /// событие: параметр изменился
         /// </summary>
         public event Action ValueChange;
     }
 
     /// <summary>
+    /// parameter type
     /// тип параметра
     /// </summary>
     public enum StrategyParameterType
     {
         /// <summary>
+        /// an integer number with the type Int
         /// целое число с типом Int
         /// </summary>
         Int,
 
         /// <summary>
+        /// a floating point number of the decimal type
         /// число с плавающей точкой типа decimal
         /// </summary>
         Decimal,
 
         /// <summary>
+        /// string
         /// строка
         /// </summary>
         String,
 
         /// <summary>
+        /// Boolean value
         /// булево значение
         /// </summary>
         Bool

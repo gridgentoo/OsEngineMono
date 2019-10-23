@@ -24,8 +24,9 @@ namespace OsEngine.Charts.CandleChart.Indicators
         public ParabolicSaR(string uniqName, bool canDelete)
         {
             Name = uniqName;
-            TypeIndicator = IndicatorOneCandleChartType.Line;
-            ColorBase = Color.DeepSkyBlue;
+            TypeIndicator = IndicatorOneCandleChartType.Point;
+            ColorUp = Color.Green;
+            ColorDown = Color.Red;
             Af = 0.02;
             MaxAf = 0.2;
             PaintOn = true;
@@ -42,8 +43,9 @@ namespace OsEngine.Charts.CandleChart.Indicators
         public ParabolicSaR(bool canDelete)
         {
             Name = Guid.NewGuid().ToString();
-            TypeIndicator = IndicatorOneCandleChartType.Line;
-            ColorBase = Color.DeepSkyBlue;
+            TypeIndicator = IndicatorOneCandleChartType.Point;
+            ColorUp = Color.Green;
+            ColorDown = Color.Red;
             Af = 0.02;
             MaxAf = 0.2;
             PaintOn = true;
@@ -58,7 +60,9 @@ namespace OsEngine.Charts.CandleChart.Indicators
             get
             {
                 List<List<decimal>> list = new List<List<decimal>>();
-                list.Add(Values);
+                //list.Add(Values);
+                list.Add(ValuesUp);
+                list.Add(ValuesDown);
                 return list;
             }
         }
@@ -71,7 +75,9 @@ namespace OsEngine.Charts.CandleChart.Indicators
             get
             {
                 List<Color> colors = new List<Color>();
-                colors.Add(ColorBase);
+                // colors.Add(ColorBase);
+                colors.Add(ColorUp);
+                colors.Add(ColorDown);
                 return colors;
             }
 
@@ -124,14 +130,29 @@ namespace OsEngine.Charts.CandleChart.Indicators
         public double MaxAf { get; set; }
 
         /// <summary>
-        /// цвет линии индикатора
+        /// цвет точки индикатора при сигнале лонг
         /// </summary>
-        public Color ColorBase { get; set; }
+        public Color ColorUp { get; set; }
+        
+        /// <summary>
+        /// цвет точки индикатора при сигнале шорт
+        /// </summary>
+        public Color ColorDown { get; set; }
 
         /// <summary>
         /// включена ли прорисовка серии на чарте
         /// </summary>
         public bool PaintOn { get; set; }
+
+        /// <summary>
+        /// верхние фракталы
+        /// </summary>
+        public List<decimal> ValuesUp { get; set; }
+
+        /// <summary>
+        /// нижние фракталы
+        /// </summary>
+        public List<decimal> ValuesDown { get; set; }
 
         /// <summary>
         /// загрузить настройки из файла
@@ -147,7 +168,8 @@ namespace OsEngine.Charts.CandleChart.Indicators
 
                 using (StreamReader reader = new StreamReader(@"Engine\" + Name + @".txt"))
                 {
-                    ColorBase = Color.FromArgb(Convert.ToInt32(reader.ReadLine()));
+                    ColorUp = Color.FromArgb(Convert.ToInt32(reader.ReadLine()));
+                    ColorDown = Color.FromArgb(Convert.ToInt32(reader.ReadLine()));
                     Af = Convert.ToDouble(reader.ReadLine());
                     MaxAf = Convert.ToDouble(reader.ReadLine());
                     PaintOn = Convert.ToBoolean(reader.ReadLine());
@@ -170,7 +192,8 @@ namespace OsEngine.Charts.CandleChart.Indicators
             {
                 using (StreamWriter writer = new StreamWriter(@"Engine\" + Name + @".txt", false))
                 {
-                    writer.WriteLine(ColorBase.ToArgb());
+                    writer.WriteLine(ColorUp.ToArgb());
+                    writer.WriteLine(ColorDown.ToArgb());
                     writer.WriteLine(Af);
                     writer.WriteLine(MaxAf);
                     writer.WriteLine(PaintOn);
@@ -202,6 +225,8 @@ namespace OsEngine.Charts.CandleChart.Indicators
             if (Values != null)
             {
                 Values.Clear();
+                ValuesUp.Clear();
+                ValuesDown.Clear();
             }
             _myCandles = null;
         }
@@ -295,6 +320,8 @@ namespace OsEngine.Charts.CandleChart.Indicators
             if (psar == null) psar = new List<decimal>();
 
             if (Values == null) Values = new List<decimal>();
+            if (ValuesUp == null) ValuesUp = new List<decimal>();
+            if (ValuesDown == null) ValuesDown = new List<decimal>();
 
             decimal[] dop = new decimal[6];
             if (Values.Count == 0)
@@ -305,6 +332,20 @@ namespace OsEngine.Charts.CandleChart.Indicators
             {
                 dop = GetValueParabolicSar(candles, candles.Count - 1, 0, Values[Values.Count - 1], MasTrend[MasTrend.Count - 1],
                     MasHp[MasHp.Count - 1], MasLp[MasLp.Count - 1], MasAf[MasAf.Count - 1]);
+            }
+
+            if (dop[0] > candles[candles.Count-1].High)
+            {
+                ValuesDown.Add(dop[0]);
+                ValuesUp.Add(0);
+            } else if (dop[0] < candles[candles.Count-1].Low)
+            {
+                ValuesUp.Add(dop[0]);
+                ValuesDown.Add(0);
+            } else
+            {
+                ValuesUp.Add(0);
+                ValuesDown.Add(0);
             }
 
             Values.Add(dop[0]);
@@ -327,6 +368,8 @@ namespace OsEngine.Charts.CandleChart.Indicators
             MasAf = new List<decimal>();
 
             Values = new List<decimal>();
+            ValuesUp = new List<decimal>();
+            ValuesDown = new List<decimal>();
 
             for (int i = 0; i < candles.Count; i++)
             {
@@ -339,6 +382,21 @@ namespace OsEngine.Charts.CandleChart.Indicators
                 {
                     dop = GetValueParabolicSar(candles, i, 0, Values[Values.Count - 1], MasTrend[MasTrend.Count - 1],
                         MasHp[MasHp.Count - 1], MasLp[MasLp.Count - 1], MasAf[MasAf.Count - 1]);
+                }
+
+                if (dop[0] > candles[i].High)
+                {
+                    ValuesDown.Add(dop[0]);
+                    ValuesUp.Add(0);
+                }
+                else if (dop[0] < candles[i].Low)
+                {
+                    ValuesUp.Add(dop[0]);
+                    ValuesDown.Add(0);
+                } else
+                {
+                    ValuesUp.Add(0);
+                    ValuesDown.Add(0);
                 }
 
                 Values.Add(dop[0]);
@@ -367,6 +425,22 @@ namespace OsEngine.Charts.CandleChart.Indicators
             {
                 dop = GetValueParabolicSar(candles, candles.Count - 1, 0, Values[Values.Count - 2], MasTrend[MasTrend.Count - 2],
                     MasHp[MasHp.Count - 2], MasLp[MasLp.Count - 2], MasAf[MasAf.Count - 2]);
+            }
+
+            if (dop[0] > candles[candles.Count - 1].High)
+            {
+                ValuesDown[ValuesDown.Count-1] = dop[0];
+                ValuesUp[ValuesUp.Count-1] = 0;
+            }
+            else if (dop[0] < candles[candles.Count - 1].Low)
+            {
+                ValuesUp[ValuesUp.Count - 1] = dop[0];
+                ValuesDown[ValuesDown.Count - 1] = 0;
+            }
+            else
+            {
+                ValuesUp[ValuesUp.Count - 1] = 0;
+                ValuesDown[ValuesDown.Count - 1] = 0;
             }
 
             Values[Values.Count - 1] = dop[0];

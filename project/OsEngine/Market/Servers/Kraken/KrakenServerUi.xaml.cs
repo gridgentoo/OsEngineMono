@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Windows;
 using OsEngine.Entity;
+using OsEngine.Language;
 using OsEngine.Logging;
 
 namespace OsEngine.Market.Servers.Kraken
 {
     /// <summary>
+    /// Interaction logic for KrakenServerUi.xaml
     /// Логика взаимодействия для KrakenServerUi.xaml
     /// </summary>
     public partial class KrakenServerUi
@@ -40,8 +42,21 @@ namespace OsEngine.Market.Servers.Kraken
             ComboBoxLeverage.Items.Add("5");
             ComboBoxLeverage.SelectedItem = _server.LeverageType;
             ComboBoxLeverage.SelectionChanged += ComboBoxLeverage_SelectionChanged;
-        }
 
+            LabelPublicKey.Content = OsLocalization.Market.ServerParamPublicKey;
+            LabelSecretKey.Content = OsLocalization.Market.ServerParamSecretKey;
+            LabelDaysToLoad.Content = OsLocalization.Market.ServerParam2;
+            CheckBoxNeadToSaveTrade.Content = OsLocalization.Market.ServerParam1;
+            LabelServerState.Content = OsLocalization.Market.Label21;
+            ButtonConnect.Content = OsLocalization.Market.ButtonConnect;
+            ButtonAbort.Content = OsLocalization.Market.ButtonDisconnect;
+            ButtonProxy.Content = OsLocalization.Market.ServerParamProxy;
+            LabelLeverage.Content = OsLocalization.Market.ServerParamLeverage;
+            LabelLoadDataType.Content = OsLocalization.Market.ServerParam3;
+
+
+        }
+        
         void ComboBoxLeverage_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             _server.LeverageType = ComboBoxLeverage.SelectedItem.ToString();
@@ -76,7 +91,7 @@ namespace OsEngine.Market.Servers.Kraken
             }
         }
 
-        void server_ConnectChangeEvent(string status) // изменился статус сервера
+        void server_ConnectChangeEvent(string status) // changed serve status / изменился статус сервера
         {
             if (!LabelStatus.CheckAccess())
             {
@@ -87,17 +102,17 @@ namespace OsEngine.Market.Servers.Kraken
             LabelStatus.Content = status;
         }
 
-        private void ButtonConnect_Click(object sender, RoutedEventArgs e) // кнопка подключить сервер
+        private void ButtonConnect_Click(object sender, RoutedEventArgs e) // button connecto to server / кнопка подключить сервер
         {
             if (string.IsNullOrWhiteSpace(TextBoxPublicKey.Text) )
             {
-                MessageBox.Show("Не хватает данных чтобы запустить сервер!");
+                MessageBox.Show(OsLocalization.Market.Label55);
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(TextBoxPrivateKey.Password))
             {
-                MessageBox.Show("Не хватает данных чтобы запустить сервер!");
+                MessageBox.Show(OsLocalization.Market.Label55);
                 return;
             }
             KrakenDateType loadDateType;
@@ -110,7 +125,7 @@ namespace OsEngine.Market.Servers.Kraken
             _server.StartServer();
         }
 
-        private void ButtonAbort_Click(object sender, RoutedEventArgs e) // кнопка остановить сервер
+        private void ButtonAbort_Click(object sender, RoutedEventArgs e) // button stop server / кнопка остановить сервер
         {
             _server.StopServer();
         }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Forms;
 using OsEngine.Entity;
+using OsEngine.Language;
 using OsEngine.Market.Servers.Tester;
 using MessageBox = System.Windows.MessageBox;
 
@@ -10,6 +11,7 @@ namespace OsEngine.OsOptimizer
 {
 
     /// <summary>
+    /// Interaction logic for TabIndexOptimizerUi.xaml
     /// Логика взаимодействия для TabIndexOptimizerUi.xaml
     /// </summary>
     public partial class TabIndexOptimizerUi
@@ -50,6 +52,7 @@ namespace OsEngine.OsOptimizer
                 timeFrame.Add(TimeFrame.Min30.ToString());
                 timeFrame.Add(TimeFrame.Hour1.ToString());
                 timeFrame.Add(TimeFrame.Hour2.ToString());
+                timeFrame.Add(TimeFrame.Hour4.ToString());
             }
             for (int i = 0; i < timeFrame.Count; i++)
             {
@@ -76,7 +79,14 @@ namespace OsEngine.OsOptimizer
             {
                 Index = new TabIndexEndTimeFrame();
             }
-            
+
+            Title = OsLocalization.Optimizer.Title1;
+            Label1.Content = OsLocalization.Optimizer.Label1;
+            Label2.Content = OsLocalization.Optimizer.Label2;
+            Label3.Content = OsLocalization.Optimizer.Label3;
+            ButtonAddSecurity.Content = OsLocalization.Optimizer.Label4;
+            ButtonDeleteSecurity.Content = OsLocalization.Optimizer.Label5;
+            ButtonAccept.Content = OsLocalization.Optimizer.Label6;
         }
 
         private List<SecurityTester> _securities;
@@ -86,30 +96,18 @@ namespace OsEngine.OsOptimizer
         public bool NeadToSave;
 
         /// <summary>
+        /// table with optimization steps
         /// таблица с этапами оптимизации
         /// </summary>
         private DataGridView _securitiesNamesGrid;
 
         private void CreateTable()
         {
-            _securitiesNamesGrid = new DataGridView();
-
-            _securitiesNamesGrid.AllowUserToOrderColumns = true;
-            _securitiesNamesGrid.AllowUserToResizeRows = true;
-            _securitiesNamesGrid.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
-            _securitiesNamesGrid.AllowUserToDeleteRows = false;
-            _securitiesNamesGrid.AllowUserToAddRows = false;
-            _securitiesNamesGrid.RowHeadersVisible = false;
-            _securitiesNamesGrid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            _securitiesNamesGrid.MultiSelect = false;
-
-            DataGridViewCellStyle style = new DataGridViewCellStyle();
-            style.Alignment = DataGridViewContentAlignment.TopLeft;
-            style.WrapMode = DataGridViewTriState.True;
-            _securitiesNamesGrid.DefaultCellStyle = style;
+            _securitiesNamesGrid = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.FullRowSelect,
+                DataGridViewAutoSizeRowsMode.None);
 
             DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
-            cell0.Style = style;
+            cell0.Style = _securitiesNamesGrid.DefaultCellStyle;
 
             DataGridViewColumn column0 = new DataGridViewColumn();
             column0.CellTemplate = cell0;

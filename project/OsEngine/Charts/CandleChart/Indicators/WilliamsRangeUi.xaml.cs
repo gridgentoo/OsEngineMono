@@ -1,35 +1,40 @@
 ﻿/*
- * Если вы не покупали лицензии, то Ваши права на использования кода ограничены не коммерческим использованием и 
- * регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
+ * Your rights to use code governed by this license http://o-s-a.net/doc/license_simple_engine.pdf
+ *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
 using System;
 using System.Windows;
 using System.Windows.Forms;
+using OsEngine.Language;
 using MessageBox = System.Windows.MessageBox;
 using TextBox = System.Windows.Forms.TextBox;
 
 namespace OsEngine.Charts.CandleChart.Indicators
 {
     /// <summary>
+    /// Interaction logic  for WilliamsRangeUi.xaml
     /// Логика взаимодействия для WilliamsRangeUi.xaml
     /// </summary>
     public partial class WilliamsRangeUi
     {
         /// <summary>
+        /// indicator
         /// индикатор
         /// </summary>
         private WilliamsRange _wr;
 
         /// <summary>
+        /// whether indicator settings have been changed
         /// изменялись ли настройки индикатора
         /// </summary>
         public bool IsChange;
 
         /// <summary>
+        /// constructor
         /// конструктор
         /// </summary>
-        /// <param name="wr">индикатор для настроек</param>
+        /// <param name="wr">configuration indicator/индикатор для настроек</param>
         public WilliamsRangeUi(WilliamsRange wr)
         {
             InitializeComponent();
@@ -41,10 +46,14 @@ namespace OsEngine.Charts.CandleChart.Indicators
             HostColorBase.Child.BackColor = _wr.ColorBase;
             CheckBoxPaintOnOff.IsChecked = _wr.PaintOn;
 
-
+            ButtonColor.Content = OsLocalization.Charts.LabelButtonIndicatorColor;
+            LabelIndicatorLongPeriod.Content = OsLocalization.Charts.LabelIndicatorLongPeriod;
+            ButtonAccept.Content = OsLocalization.Charts.LabelButtonIndicatorAccept;
+            CheckBoxPaintOnOff.Content = OsLocalization.Charts.LabelPaintIntdicatorIsVisible;
         }
 
         /// <summary>
+        /// accept button
         /// кнопка принять
         /// </summary>
         private void ButtonAccept_Click(object sender, RoutedEventArgs e)
@@ -77,6 +86,7 @@ namespace OsEngine.Charts.CandleChart.Indicators
         }
 
         /// <summary>
+        /// color setting button
         /// кнопка настроить цвет
         /// </summary>
         private void ButtonColor_Click(object sender, RoutedEventArgs e)

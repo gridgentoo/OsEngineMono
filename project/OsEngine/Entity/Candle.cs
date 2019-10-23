@@ -1,4 +1,5 @@
 ﻿/*
+ * Your rights to use code governed by this license http://o-s-a.net/doc/license_simple_engine.pdf
  *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
@@ -9,51 +10,78 @@ using System.Globalization;
 namespace OsEngine.Entity
 {
     /// <summary>
+    /// Candle
     /// Свеча
     /// </summary>
     public class Candle
     {
         /// <summary>
+        /// candle start time
         /// время начала свечи
         /// </summary>
-        public DateTime TimeStart;
+        public DateTime TimeStart
+        {
+            get { return _timeStart; }
+            set
+            {
+                _timeStart = value;
+            }
+        }
+        private DateTime _timeStart;
 
         /// <summary>
+        ///  opening price
         /// цена открытия
         /// </summary>
         public decimal Open;
 
         /// <summary>
+        /// maximum price for the period
         /// максимальная цена за период
         /// </summary>
         public decimal High;
 
         /// <summary>
+        /// closing price
         /// цена закрытия
         /// </summary>
         public decimal Close;
 
         /// <summary>
+        /// minimum price for the period
         /// минимальная цена за период
         /// </summary>
         public decimal Low;
 
         /// <summary>
+        /// volume
         /// объём
         /// </summary>
         public decimal Volume;
 
         /// <summary>
+        /// candles completion status
         /// статус завершённости свечи
         /// </summary>
-        public CandleStates State;
+        public CandleState State;
 
         /// <summary>
+        /// the trades that make up this candle
         /// трейды составляющие эту свечу
         /// </summary>
-        public List<Trade> Trades;
+        public List<Trade> Trades
+        {
+            set
+            {
+                _trades = value;
+            }
+            get { return _trades; }
+        }
+
+        private List<Trade> _trades = new List<Trade>();
 
         /// <summary>
+        /// if this growing candle
         /// растущая ли эта свеча
         /// </summary>
         public bool IsUp
@@ -69,6 +97,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// if that candle is falling
         /// падающая ли эта свеча
         /// </summary>
         public bool IsDown
@@ -84,9 +113,95 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// if type of that candle is doji (indecision in the market, Close = Open)
+        /// если тип этой свечи доджи (нерешительность на рынке, Close = Open)
+        /// </summary>
+        public bool IsDoji
+        {
+            get
+            {
+                if (Close == Open)
+                {
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// shadow top
+        /// тень сверху
+        /// </summary>
+        public decimal ShadowTop
+        {
+            get
+            {
+                if (IsUp)
+                {
+                    return High - Close;
+                }
+                else
+                {
+                    return High - Open;
+                }
+            }
+        }
+
+        /// <summary>
+        /// shadow bottom
+        /// тень снизу
+        /// </summary>
+        public decimal ShadowBottom
+        {
+            get
+            {
+                if (IsUp)
+                {
+                    return Open - Low;
+                }
+                else
+                {
+                    return Close - Low;
+                }
+            }
+        }
+
+        /// <summary>
+        /// candle body with shadows
+        /// тело свечи с учетом теней
+        /// </summary>
+        public decimal ShadowBody
+        {
+            get
+            {
+                return High - Low;
+            }
+        }
+
+        /// <summary>
+        /// candle body without shadows
+        /// тело свечи без учета теней
+        /// </summary>
+        public decimal Body
+        {
+            get
+            {
+                if (IsUp)
+                {
+                    return Close - Open;
+                }
+                else
+                {
+                    return Open - Close;
+                }
+            }
+        }
+
+        /// <summary>
+        /// to load the status of the candlestick from the line
         /// загрузить состояние свечи из строки
         /// </summary>
-        /// <param name="In">строка состояния</param>
+        /// <param name="In">status line/строка состояния</param>
         public void SetCandleFromString(string In)
         {
 //20131001,100000,97.8000000,97.9900000,97.7500000,97.9000000,1
@@ -103,168 +218,104 @@ namespace OsEngine.Entity
 
             TimeStart = new DateTime(year, month, day, hour, minute, second);
 
-            string[] shit = sIn[2].Split('.');
-            if (shit.Length == 2)
-            {
-                if (!Decimal.TryParse(shit[0] + '.' + shit[1], out Open))
-                {
-                    Open = Convert.ToDecimal(shit[0] + ',' + shit[1]);
-                }
-            }
-            else
-            {
-                Open = Convert.ToDecimal(shit[0]);
-            }
-
-            shit = sIn[3].Split('.');
-
-            if (shit.Length == 2)
-            {
-                if (!Decimal.TryParse(shit[0] + '.' + shit[1], out High))
-                {
-                    High = Convert.ToDecimal(shit[0] + ',' + shit[1]);
-                }
-            }
-            else
-            {
-                High = Convert.ToDecimal(shit[0]);
-            }
-
-            shit = sIn[4].Split('.');
-            if (shit.Length == 2)
-            {
-                if (!Decimal.TryParse(shit[0] + '.' + shit[1], out Low))
-                {
-                    Low = Convert.ToDecimal(shit[0] + ',' + shit[1]);
-                }
-            }
-            else
-            {
-                Low = Convert.ToDecimal(shit[0]);
-            }
-
-            shit = sIn[5].Split('.');
-            if (shit.Length == 2)
-            {
-                if (!Decimal.TryParse(shit[0] + '.' + shit[1], out Close))
-                {
-                    Close = Convert.ToDecimal(shit[0] + ',' + shit[1]);
-                }
-            }
-            else
-            {
-                Close = Convert.ToDecimal(shit[0]);
-            }
-
-            shit = sIn[6].Split('.');
+            Open = sIn[2].ToDecimal();
+            High = sIn[3].ToDecimal();
+            Low = sIn[4].ToDecimal();
+            Close = sIn[5].ToDecimal();
 
             try
             {
-                if (Convert.ToInt32(shit[0]) == 0)
-                {
-                    Volume = 1;
-                }
-                else
-                {
-                    if (shit.Length == 2 && Convert.ToDecimal(shit[1]) != 0)
-                    {
-                        if (!Decimal.TryParse(shit[0] + '.' + shit[1], out Volume))
-                        {
-                            Volume = Convert.ToDecimal(shit[0] + ',' + shit[1]);
-                        }
-                    }
-                    else
-                    {
-                        Volume = Convert.ToDecimal(shit[0]);
-                    }
-                }
-
+                Volume = sIn[6].ToDecimal();
             }
             catch (Exception)
             {
                 Volume = 1;
             }
-
         }
 
         /// <summary>
+        /// take a line of signatures
         /// взять строку с подписями
         /// </summary>
-        public string GetBeautifulString()
+        public string ToolTip
         {
             //Date - 20131001 Time - 100000 
             // Open - 97.8000000 High - 97.9900000 Low - 97.7500000 Close - 97.9000000
-
-            string result = string.Empty;
-
-            if (TimeStart.Day > 9)
+            get
             {
-                result += TimeStart.Day.ToString();
-            }
-            else
-            {
-                result += "0" + TimeStart.Day;
-            }
 
-            result += ".";
+                string result = string.Empty;
 
-            if (TimeStart.Month > 9)
-            {
-                result += TimeStart.Month.ToString();
+                if (TimeStart.Day > 9)
+                {
+                    result += TimeStart.Day.ToString();
+                }
+                else
+                {
+                    result += "0" + TimeStart.Day;
+                }
+
+                result += ".";
+
+                if (TimeStart.Month > 9)
+                {
+                    result += TimeStart.Month.ToString();
+                }
+                else
+                {
+                    result += "0" + TimeStart.Month;
+                }
+
+                result += ".";
+                result += TimeStart.Year.ToString();
+
+                result += " ";
+
+                if (TimeStart.Hour > 9)
+                {
+                    result += TimeStart.Hour.ToString();
+                }
+                else
+                {
+                    result += "0" + TimeStart.Hour;
+                }
+
+                result += ":";
+
+                if (TimeStart.Minute > 9)
+                {
+                    result += TimeStart.Minute.ToString();
+                }
+                else
+                {
+                    result += "0" + TimeStart.Minute;
+                }
+
+                result += ":";
+
+                if (TimeStart.Second > 9)
+                {
+                    result += TimeStart.Second.ToString();
+                }
+                else
+                {
+                    result += "0" + TimeStart.Second;
+                }
+
+                result += "  \r\n";
+
+                result += " O: ";
+                result += Open.ToString(new CultureInfo("ru-RU"));
+                result += " H: ";
+                result += High.ToString(new CultureInfo("ru-RU"));
+                result += " L: ";
+                result += Low.ToString(new CultureInfo("ru-RU"));
+                result += " C: ";
+                result += Close.ToString(new CultureInfo("ru-RU"));
+
+                return result;
             }
-            else
-            {
-                result += "0" + TimeStart.Month;
-            }
-            result += ".";
-            result += TimeStart.Year.ToString();
-
-            result += " ";
-
-            if (TimeStart.Hour > 9)
-            {
-                result += TimeStart.Hour.ToString();
-            }
-            else
-            {
-                result += "0" + TimeStart.Hour;
-            }
-
-            result += ":";
-
-            if (TimeStart.Minute > 9)
-            {
-                result += TimeStart.Minute.ToString();
-            }
-            else
-            {
-                result += "0" + TimeStart.Minute;
-            }
-
-            result += ":";
-
-            if (TimeStart.Second > 9)
-            {
-                result += TimeStart.Second.ToString();
-            }
-            else
-            {
-                result += "0" + TimeStart.Second;
-            }
-            result += "  \r\n";
-
-            result += " O: ";
-            result += Open.ToString(new CultureInfo("ru-RU"));
-            result += " H: ";
-            result += High.ToString(new CultureInfo("ru-RU"));
-            result += " L: ";
-            result += Low.ToString(new CultureInfo("ru-RU"));
-            result += " C: ";
-            result += Close.ToString(new CultureInfo("ru-RU"));
-
-            return result;
         }
-
 
         private string _stringToSave;
         private decimal _closeWhenGotLastString;
@@ -273,7 +324,9 @@ namespace OsEngine.Entity
             get
             {
                 if (_closeWhenGotLastString == Close)
-                {// если мы уже брали свечи раньше, не рассчитываем заного строку
+                {
+                    // If we've taken candles before, we're not counting on that line.
+                    // если мы уже брали свечи раньше, не рассчитываем заного строку
                     return _stringToSave;
                 }
 
@@ -287,14 +340,11 @@ namespace OsEngine.Entity
                 string result = "";
                 result += TimeStart.ToString("yyyyMMdd,HHmmss") + ",";
 
-               // result += TimeStart.Date.ToString("yyyyMMdd") + ",";
-                //result += TimeStart.TimeOfDay.ToString("HHmmss") + ",";
-
-                result += Open.ToString(new CultureInfo("en-US")) + ",";
-                result += High.ToString(new CultureInfo("en-US")) + ",";
-                result += Low.ToString(new CultureInfo("en-US")) + ",";
-                result += Close.ToString(new CultureInfo("en-US")) + ",";
-                result += Volume.ToString(new CultureInfo("en-US"));
+                result += Open.ToString(CultureInfo.InvariantCulture) + ",";
+                result += High.ToString(CultureInfo.InvariantCulture) + ",";
+                result += Low.ToString(CultureInfo.InvariantCulture) + ",";
+                result += Close.ToString(CultureInfo.InvariantCulture) + ",";
+                result += Volume.ToString(CultureInfo.InvariantCulture);
 
                 _stringToSave = result;
 
@@ -305,21 +355,25 @@ namespace OsEngine.Entity
     }
 
     /// <summary>
+    /// candle formation status
     /// состояние формирования свечи
     /// </summary>
-    public enum CandleStates
+    public enum CandleState
     {
         /// <summary>
+        /// completed
         /// завершено
         /// </summary>
         Finished,
 
         /// <summary>
+        /// started
         /// начато
         /// </summary>
         Started,
 
         /// <summary>
+        /// indefinitely
         /// неизвестно
         /// </summary>
         None

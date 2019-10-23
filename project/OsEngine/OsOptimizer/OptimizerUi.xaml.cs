@@ -1,21 +1,23 @@
-﻿using System;
+﻿using OsEngine.Entity;
+using OsEngine.Journal;
+using OsEngine.Language;
+using OsEngine.Logging;
+using OsEngine.Market;
+using OsEngine.Market.Servers.Tester;
+using OsEngine.OsTrader.Panels;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
-using System.Windows.Media;
-using OsEngine.Entity;
-using OsEngine.Journal;
-using OsEngine.Logging;
-using OsEngine.Market.Servers.Tester;
-using OsEngine.OsTrader.Panels;
 using MessageBox = System.Windows.MessageBox;
 using ProgressBar = System.Windows.Controls.ProgressBar;
 
 namespace OsEngine.OsOptimizer
 {
     /// <summary>
+    /// Interaction Logic for OptimizerUi.xaml
     /// Логика взаимодействия для OptimizerUi.xaml
     /// </summary>
     public partial class OptimizerUi
@@ -23,8 +25,6 @@ namespace OsEngine.OsOptimizer
         public OptimizerUi()
         {
             InitializeComponent();
-
-            TabControlPrime.Items.RemoveAt(4);
 
             _master = new OptimizerMaster();
             _master.StrategyNamesReadyEvent += _master_StrategyNamesReadyEvent;
@@ -52,69 +52,37 @@ namespace OsEngine.OsOptimizer
             TextBoxStartPortfolio.Text = _master.StartDepozit.ToString();
             TextBoxStartPortfolio.TextChanged += TextBoxStartPortfolio_TextChanged;
 
-            // фильтры
+            // filters/фильтры
             CheckBoxFilterProfitIsOn.IsChecked = _master.FilterProfitIsOn;
             CheckBoxFilterMaxDrowDownIsOn.IsChecked = _master.FilterMaxDrowDownIsOn;
             CheckBoxFilterMiddleProfitIsOn.IsChecked = _master.FilterMiddleProfitIsOn;
             CheckBoxFilterWinPositonIsOn.IsChecked = _master.FilterWinPositionIsOn;
             CheckBoxFilterProfitFactorIsOn.IsChecked = _master.FilterProfitFactorIsOn;
+            CheckBoxFilterDealsCount.IsChecked = _master.FilterDealsCountIsOn;
 
             CheckBoxFilterProfitIsOn.Click += CheckBoxFilterIsOn_Click;
             CheckBoxFilterMaxDrowDownIsOn.Click += CheckBoxFilterIsOn_Click;
             CheckBoxFilterMiddleProfitIsOn.Click += CheckBoxFilterIsOn_Click;
             CheckBoxFilterWinPositonIsOn.Click += CheckBoxFilterIsOn_Click;
             CheckBoxFilterProfitFactorIsOn.Click += CheckBoxFilterIsOn_Click;
+            CheckBoxFilterDealsCount.Click += CheckBoxFilterIsOn_Click;
 
             TextBoxFilterProfitValue.Text = _master.FilterProfitFactorValue.ToString();
             TextBoxMaxDrowDownValue.Text = _master.FilterMaxDrowDownValue.ToString();
             TextBoxFilterMiddleProfitValue.Text = _master.FilterMiddleProfitValue.ToString();
             TextBoxFilterWinPositionValue.Text = _master.FilterWinPositionValue.ToString();
             TextBoxFilterProfitFactorValue.Text = _master.FilterProfitFactorValue.ToString();
+            TextBoxFilterDealsCount.Text = _master.FilterDealsCountValue.ToString();
 
             TextBoxFilterProfitValue.TextChanged += TextBoxFiltertValue_TextChanged;
             TextBoxMaxDrowDownValue.TextChanged += TextBoxFiltertValue_TextChanged;
             TextBoxFilterMiddleProfitValue.TextChanged += TextBoxFiltertValue_TextChanged;
             TextBoxFilterWinPositionValue.TextChanged += TextBoxFiltertValue_TextChanged;
             TextBoxFilterProfitFactorValue.TextChanged += TextBoxFiltertValue_TextChanged;
+            TextBoxFilterDealsCount.TextChanged += TextBoxFiltertValue_TextChanged;
 
-            // Оптимизация
 
-            if (_master.TypeOptimization == OptimizationType.SimulatedAnnealing)
-            {
-                CheckBoxOptimizationTypeSimulatedAnnealing.IsChecked = true;
-            }
-            else if (_master.TypeOptimization == OptimizationType.GeneticАlgorithm)
-            {
-                CheckBoxOptimizationTypeGeneticAlgoritm.IsChecked = true;
-            }
-
-            CheckBoxOptimizationTypeSimulatedAnnealing.Click += CheckBoxOptimizationTypeSimulatedAnnealing_Click;
-            CheckBoxOptimizationTypeGeneticAlgoritm.Click += CheckBoxOptimizationTypeGeneticAlgoritm_Click;
-
-            if (_master.TypeOprimizationFunction == OptimizationFunctionType.EndProfit)
-            {
-                CheckBoxOptimizationFunctionTypeEndProfit.IsChecked = true;
-            }
-            if (_master.TypeOprimizationFunction == OptimizationFunctionType.MiddleProfitFromPosition)
-            {
-                CheckBoxOptimizationFunctionMiddleProfitFromPosition.IsChecked = true;
-            }
-            if (_master.TypeOprimizationFunction == OptimizationFunctionType.MaxDrowDown)
-            {
-                CheckBoxOptimizationFunctionMaxDrowDawn.IsChecked = true;
-            }
-            if (_master.TypeOprimizationFunction == OptimizationFunctionType.ProfitFactor)
-            {
-                CheckBoxOptimizationFunctionProfitFactor.IsChecked = true;
-            }
-
-            CheckBoxOptimizationFunctionTypeEndProfit.Click += CheckBoxOptimizationFunctionTypeEndProfit_Click;
-            CheckBoxOptimizationFunctionMiddleProfitFromPosition.Click +=
-            CheckBoxOptimizationFunctionMiddleProfitFromPosition_Click;
-            CheckBoxOptimizationFunctionMaxDrowDawn.Click += CheckBoxOptimizationFunctionMaxDrowDawn_Click;
-            CheckBoxOptimizationFunctionProfitFactor.Click += CheckBoxOptimizationFunctionProfitFactor_Click;
-
-            // Этапы
+            // Stages/Этапы
 
             DatePickerStart.DisplayDate = _master.TimeStart;
             DatePickerEnd.DisplayDate = _master.TimeEnd;
@@ -124,34 +92,53 @@ namespace OsEngine.OsOptimizer
             DatePickerEnd.SelectedDateChanged += DatePickerEnd_SelectedDateChanged;
             TextBoxPercentFiltration.TextChanged += TextBoxPercentFiltration_TextChanged;
 
-
-            // алгоритмы оптимизации. Пока блокируем
-
-            CheckBoxOptimizationTypeSimulatedAnnealing.IsEnabled = false;
-            CheckBoxOptimizationTypeGeneticAlgoritm.IsEnabled = false;
-            CheckBoxOptimizationTypeAllBots.IsEnabled = false;
-            CheckBoxOptimizationTypeAllBots.IsChecked = true;
-
-            CheckBoxOptimizationFunctionTypeEndProfit.IsEnabled = false;
-            CheckBoxOptimizationFunctionMiddleProfitFromPosition.IsEnabled = false;
-            CheckBoxOptimizationFunctionMaxDrowDawn.IsEnabled = false;
-            CheckBoxOptimizationFunctionProfitFactor.IsEnabled = false;
-
             _master.NeadToMoveUiToEvent += _master_NeadToMoveUiToEvent;
 
             Thread proggressPainter = new Thread(PainterProgressArea);
             proggressPainter.Name = "ProggressPainter";
             proggressPainter.IsBackground = true;
             proggressPainter.Start();
+
+            Label7.Content = OsLocalization.Optimizer.Label7;
+            Label8.Content = OsLocalization.Optimizer.Label8;
+            ButtonGo.Content = OsLocalization.Optimizer.Label9;
+            TabItemControl.Header = OsLocalization.Optimizer.Label10;
+            ButtonServerDialog.Content = OsLocalization.Optimizer.Label11;
+            Label12.Content = OsLocalization.Optimizer.Label12;
+            Label13.Content = OsLocalization.Optimizer.Label13;
+            LabelTabsEndTimeFrames.Content = OsLocalization.Optimizer.Label14;
+            Label15.Content = OsLocalization.Optimizer.Label15;
+            TabItemParams.Header = OsLocalization.Optimizer.Label16;
+            Label17.Content = OsLocalization.Optimizer.Label17;
+            TabItemFazes.Header = OsLocalization.Optimizer.Label18;
+            ButtonCreateOptimizeFazes.Content = OsLocalization.Optimizer.Label19;
+            Label20.Content = OsLocalization.Optimizer.Label20;
+            Label21.Content = OsLocalization.Optimizer.Label21;
+            Label22.Content = OsLocalization.Optimizer.Label22;
+            TabItemFilters.Header = OsLocalization.Optimizer.Label23;
+            CheckBoxFilterProfitIsOn.Content = OsLocalization.Optimizer.Label24;
+            CheckBoxFilterMaxDrowDownIsOn.Content = OsLocalization.Optimizer.Label25;
+            CheckBoxFilterMiddleProfitIsOn.Content = OsLocalization.Optimizer.Label26;
+            CheckBoxFilterWinPositonIsOn.Content = OsLocalization.Optimizer.Label27;
+            CheckBoxFilterProfitFactorIsOn.Content = OsLocalization.Optimizer.Label28;
+            TabItemResults.Header= OsLocalization.Optimizer.Label29;
+            Label30.Content = OsLocalization.Optimizer.Label30;
+            Label31.Content = OsLocalization.Optimizer.Label31;
+            CheckBoxFilterDealsCount.Content = OsLocalization.Optimizer.Label34;
         }
 
+
+
         /// <summary>
+        /// an object containing data for optimization
+        /// and starting the optimization process
         /// объект хранящий в себе данные для оптимизации
         /// и запускающий процесс оптимизации
         /// </summary>
         private OptimizerMaster _master;
 
         /// <summary>
+        /// prevent the user from touching the interface
         /// запретить пользователю трогать интерфейс
         /// </summary>
         private void StopUserActivity()
@@ -162,6 +149,7 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// allow the user to touch the interface
         /// разрешить пользователю трогать интерфейс
         /// </summary>
         private void StartUserActivity()
@@ -172,13 +160,14 @@ namespace OsEngine.OsOptimizer
                 return;
             }
 
-            ButtonGo.Content = "Погнали!";
+            ButtonGo.Content = OsLocalization.Optimizer.Label9;
             TabControlPrime.SelectedItem = TabControlPrime.Items[4];
             TabControlPrime.IsEnabled = true;
             ComboBoxThreadsCount.IsEnabled = true;
         }
 
         /// <summary>
+        /// inbound event: optimization process completed
         /// входящее событие: завершился процесс оптимизации
         /// </summary>
         void _master_TestReadyEvent(List<BotPanel> botsEndFirstFaze, List<BotPanel> botsOutOfSample)
@@ -192,19 +181,23 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// robots with InSample results
         /// роботы с результатами InSample
         /// </summary>
         private List<BotPanel> _botsInSample;
 
         /// <summary>
+        /// OutOfSample robots
         /// роботы с результатами OutOfSample
         /// </summary>
         private List<BotPanel> _botsOutOfSample;
 
 
-// работа по рисованию прогрессБаров
+// work on drawing progress bars
+// работа по рисованию прогресс Баров
 
         /// <summary>
+        /// the user has changed the number of threads that will be optimized
         /// пользователь изменил кол-во потоков которым будет проходить оптимизация
         /// </summary>
         void ComboBoxThreadsCount_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -213,11 +206,13 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// progress bars showing progress of individual threads during optimization
         /// прогрессбары показывающие прогресс отдельных потоков во время оптимизации
         /// </summary>
         private List<ProgressBar> _progressBars;
 
         /// <summary>
+        /// create progress bars for stream optimization
         /// создать прогресс бары для потоков оптимизации
         /// </summary>
         private void CreateThradsProgressBars()
@@ -248,6 +243,7 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// place of work update stream progress on progress bars
         /// место работы потока обновляющего прогресс на прогрессБарах
         /// </summary>
         private void PainterProgressArea()
@@ -265,6 +261,7 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// update progress
         /// обновить прогресс
         /// </summary>
         private void PaintAllProgressBars()
@@ -311,6 +308,7 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// upgrade all progress bars to the final stage
         /// обновить все прогрессбары до завершающей стадии
         /// </summary>
         private void PaintEndOnAllProgressBars()
@@ -330,12 +328,14 @@ namespace OsEngine.OsOptimizer
             }
         }
 
-// передвижение экрана к нужному элементу интерфейса, если пользователь не успел всё настроить
+        // Moving the screen to the desired interface element, if the user has not managed to configure everything
+        // передвижение экрана к нужному элементу интерфейса, если пользователь не успел всё настроить
 
         /// <summary>
+        /// optimization can not start and you need to move the display to a place that is not configured
         /// оптимизация не может стартовать и нужно переместить отображение к месту которое не настроено
         /// </summary>
-        /// <param name="move">место куда нужно переместить ГУИ</param>
+        /// <param name="move">place to move GUI/место куда нужно переместить ГУИ</param>
         void _master_NeadToMoveUiToEvent(NeadToMoveUiTo move)
         {
             if (!TabControlPrime.Dispatcher.CheckAccess())
@@ -347,67 +347,40 @@ namespace OsEngine.OsOptimizer
             if (move == NeadToMoveUiTo.Fazes)
             {
                 TabControlPrime.SelectedItem = TabControlPrime.Items[2];
-                GridFazes.Background = Brushes.DarkOrange;
             }
             if (move == NeadToMoveUiTo.Filters)
             {
                 TabControlPrime.SelectedItem = TabControlPrime.Items[3];
-                GridFilters.Background = Brushes.DarkOrange;
             }
             if (move == NeadToMoveUiTo.TabsAndTimeFrames)
             {
                 TabControlPrime.SelectedItem = TabControlPrime.Items[0];
-                RectangleTimeFramesAndSecurities.Fill = Brushes.DarkOrange;
             }
             if (move == NeadToMoveUiTo.Storage)
             {
                 TabControlPrime.SelectedItem = TabControlPrime.Items[0];
-                RectangleServerData.Fill = Brushes.DarkOrange;
             }
             if (move == NeadToMoveUiTo.Parametrs)
             {
                 TabControlPrime.SelectedItem = TabControlPrime.Items[1];
-                GridParametrs.Background = Brushes.DarkOrange;
             }
-
-            Thread worker = new Thread(RePaintAreas);
-            worker.IsBackground = true;
-            worker.Start();
         }
 
-        /// <summary>
-        /// место работы потока который возвращает стандартные цвета для объектов на форме, 
-        /// после того как мы подсветили какие-то из них для пользователя
-        /// </summary>
-        private void RePaintAreas()
-        {
-            if (!TabControlPrime.Dispatcher.CheckAccess())
-            {
-                Thread.Sleep(1000);
-                TabControlPrime.Dispatcher.Invoke(RePaintAreas);
-                return;
-            }
-            GridFazes.Background = Brushes.Black;
-            RectangleTimeFramesAndSecurities.Fill = Brushes.Black;
-            RectangleServerData.Fill = Brushes.Black;
-            RectangleStrategyName.Fill = Brushes.Black;
-            GridParametrs.Background = Brushes.Black;
-            GridFilters.Background = Brushes.Black;
-        }
 
-// обработка контролов по нажатию их пользователем
+// processing controls by clicking on them by the user/обработка контролов по нажатию их пользователем
 
         /// <summary>
+        /// the user has clicked on the start and stop optimization button
         /// пользователь нажал на кнопку запускающую и останавливающую оптимизацию
         /// </summary>
         private void ButtonGo_Click(object sender, RoutedEventArgs e)
         {
             SaveParamsFromTable();
 
-            if (ButtonGo.Content.ToString() == "Погнали!" &&
+            if (ButtonGo.Content.ToString() == OsLocalization.Optimizer.Label9 &&
                 _botsInSample != null)
             {
-                AcceptDialogUi ui = new AcceptDialogUi("Предыдущие данные будут уничтожены!");
+                AcceptDialogUi ui = new AcceptDialogUi(OsLocalization.Optimizer.Label33);
 
                 ui.ShowDialog();
 
@@ -417,15 +390,15 @@ namespace OsEngine.OsOptimizer
                 }
             }
 
-            if (ButtonGo.Content.ToString() == "Погнали!" && _master.Start())
+            if (ButtonGo.Content.ToString() == OsLocalization.Optimizer.Label9 && _master.Start())
             {
-                ButtonGo.Content = "Остановить";
+                ButtonGo.Content = OsLocalization.Optimizer.Label32;
                 StopUserActivity();
             }
-            else if (ButtonGo.Content.ToString() == "Остановить")
+            else if (ButtonGo.Content.ToString() == OsLocalization.Optimizer.Label32)
             {
                 _master.Stop();
-                ButtonGo.Content = "Погнали!";
+                ButtonGo.Content = OsLocalization.Optimizer.Label9;
             }
         }
 
@@ -451,50 +424,6 @@ namespace OsEngine.OsOptimizer
             _master.TimeStart = DatePickerStart.DisplayDate;
         }
 
-        private void CheckBoxOptimizationFunctionProfitFactor_Click(object sender, RoutedEventArgs e)
-        {
-            _master.TypeOprimizationFunction = OptimizationFunctionType.ProfitFactor;
-            CheckBoxOptimizationFunctionMaxDrowDawn.IsChecked = false;
-            CheckBoxOptimizationFunctionMiddleProfitFromPosition.IsChecked = false;
-            CheckBoxOptimizationFunctionTypeEndProfit.IsChecked = false;
-        }
-
-        void CheckBoxOptimizationFunctionMaxDrowDawn_Click(object sender, RoutedEventArgs e)
-        {
-            _master.TypeOprimizationFunction = OptimizationFunctionType.MaxDrowDown;
-            CheckBoxOptimizationFunctionProfitFactor.IsChecked = false;
-            CheckBoxOptimizationFunctionMiddleProfitFromPosition.IsChecked = false;
-            CheckBoxOptimizationFunctionTypeEndProfit.IsChecked = false;
-        }
-
-        void CheckBoxOptimizationFunctionMiddleProfitFromPosition_Click(object sender, RoutedEventArgs e)
-        {
-            _master.TypeOprimizationFunction = OptimizationFunctionType.MiddleProfitFromPosition;
-            CheckBoxOptimizationFunctionProfitFactor.IsChecked = false;
-            CheckBoxOptimizationFunctionMaxDrowDawn.IsChecked = false;
-            CheckBoxOptimizationFunctionTypeEndProfit.IsChecked = false;
-        }
-
-        void CheckBoxOptimizationFunctionTypeEndProfit_Click(object sender, RoutedEventArgs e)
-        {
-            _master.TypeOprimizationFunction = OptimizationFunctionType.EndProfit;
-            CheckBoxOptimizationFunctionProfitFactor.IsChecked = false;
-            CheckBoxOptimizationFunctionMaxDrowDawn.IsChecked = false;
-            CheckBoxOptimizationFunctionMiddleProfitFromPosition.IsChecked = false;
-        }
-
-        void CheckBoxOptimizationTypeGeneticAlgoritm_Click(object sender, RoutedEventArgs e)
-        {
-            CheckBoxOptimizationTypeSimulatedAnnealing.IsChecked = false;
-            _master.TypeOptimization = OptimizationType.GeneticАlgorithm;
-        }
-
-        void CheckBoxOptimizationTypeSimulatedAnnealing_Click(object sender, RoutedEventArgs e)
-        {
-            CheckBoxOptimizationTypeGeneticAlgoritm.IsChecked = false;
-            _master.TypeOptimization = OptimizationType.SimulatedAnnealing;
-        }
-
         void TextBoxFiltertValue_TextChanged(object sender, TextChangedEventArgs e)
         {
             try
@@ -504,6 +433,7 @@ namespace OsEngine.OsOptimizer
                 _master.FilterMiddleProfitValue = Convert.ToDecimal(TextBoxFilterMiddleProfitValue.Text);
                 _master.FilterWinPositionValue = Convert.ToDecimal(TextBoxFilterWinPositionValue.Text);
                 _master.FilterProfitFactorValue = Convert.ToDecimal(TextBoxFilterProfitFactorValue.Text);
+                _master.FilterDealsCountValue = Convert.ToInt32(TextBoxFilterDealsCount.Text);
             }
             catch
             {
@@ -512,9 +442,10 @@ namespace OsEngine.OsOptimizer
                 TextBoxFilterMiddleProfitValue.Text = _master.FilterMiddleProfitValue.ToString();
                 TextBoxFilterWinPositionValue.Text = _master.FilterWinPositionValue.ToString();
                 TextBoxFilterProfitFactorValue.Text = _master.FilterProfitFactorValue.ToString();
+                TextBoxFilterDealsCount.Text = _master.FilterDealsCountValue.ToString();
             }
         }
-
+        
         void CheckBoxFilterIsOn_Click(object sender, RoutedEventArgs e)
         {
             _master.FilterProfitIsOn = CheckBoxFilterProfitIsOn.IsChecked.Value;
@@ -522,6 +453,7 @@ namespace OsEngine.OsOptimizer
             _master.FilterMiddleProfitIsOn = CheckBoxFilterMiddleProfitIsOn.IsChecked.Value;
             _master.FilterWinPositionIsOn = CheckBoxFilterWinPositonIsOn.IsChecked.Value;
             _master.FilterProfitFactorIsOn = CheckBoxFilterProfitFactorIsOn.IsChecked.Value;
+            _master.FilterDealsCountIsOn = CheckBoxFilterDealsCount.IsChecked.Value;
         }
 
         void _master_NewSecurityEvent(List<Security> securities)
@@ -567,9 +499,11 @@ namespace OsEngine.OsOptimizer
             _master.ShowDataStorageDialog();
         }
 
+// events from the server
 // события из сервера
 
         /// <summary>
+        /// inbound event: changed the number of strategies available for optimization
         /// входящее событие: изменилось кол-во стратегий доступных для оптимизации
         /// </summary>
         private void _master_StrategyNamesReadyEvent(List<string> strategy)
@@ -587,7 +521,7 @@ namespace OsEngine.OsOptimizer
                 return;
             }
 
-            _master.SendLogMessage("Найдено стратегий с параметрами: " + strategy.Count, LogMessageType.System);
+            _master.SendLogMessage(OsLocalization.Optimizer.Message19 + strategy.Count, LogMessageType.System);
 
             ComboBoxNameStrategyToOptimization.Items.Clear();
 
@@ -606,6 +540,7 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// inbound event: the start or end time of the data in the server has changed
         /// входящее событие: изменилась начальная или конечное время данных в сервере
         /// </summary>
         void _master_DateTimeStartEndChange()
@@ -619,40 +554,29 @@ namespace OsEngine.OsOptimizer
             DatePickerEnd.SelectedDate = _master.TimeEnd;
         }
 
+// Table of Papers and Time Frames for ordinary tabs
 // таблица Бумаг и таймФреймов для обычных вкладок
 
         /// <summary>
+        /// table with settings entries for the usual tabs of the robot
         /// таблица с записями настроек для обычных вкладок у робота
         /// </summary>
         private DataGridView _gridTableTabsSimple;
 
         /// <summary>
+        /// create a table for regular tabs
         /// создать таблицу для обычных вкладок
         /// </summary>
         private void CreateTableTabsSimple()
         {
-            _gridTableTabsSimple = new DataGridView();
-
-            _gridTableTabsSimple.AllowUserToOrderColumns = true;
-            _gridTableTabsSimple.AllowUserToResizeRows = true;
-            _gridTableTabsSimple.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
-            _gridTableTabsSimple.AllowUserToDeleteRows = false;
-            _gridTableTabsSimple.AllowUserToAddRows = false;
-            _gridTableTabsSimple.RowHeadersVisible = false;
-            _gridTableTabsSimple.SelectionMode = DataGridViewSelectionMode.ColumnHeaderSelect;
-            _gridTableTabsSimple.MultiSelect = false;
-
-            DataGridViewCellStyle style = new DataGridViewCellStyle();
-            style.Alignment = DataGridViewContentAlignment.TopLeft;
-            style.WrapMode = DataGridViewTriState.True;
-            _gridTableTabsSimple.DefaultCellStyle = style;
+            _gridTableTabsSimple = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.ColumnHeaderSelect, DataGridViewAutoSizeRowsMode.None);
 
             DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
-            cell0.Style = style;
+            cell0.Style = _gridTableTabsSimple.DefaultCellStyle;
 
             DataGridViewColumn column0 = new DataGridViewColumn();
             column0.CellTemplate = cell0;
-            column0.HeaderText = @"№ вкладки";
+            column0.HeaderText = OsLocalization.Optimizer.Message20;
             column0.ReadOnly = true;
             column0.Width = 100;
 
@@ -660,7 +584,7 @@ namespace OsEngine.OsOptimizer
 
             DataGridViewColumn column1 = new DataGridViewColumn();
             column1.CellTemplate = cell0;
-            column1.HeaderText = @"Бумага";
+            column1.HeaderText = OsLocalization.Optimizer.Message21;
             column1.ReadOnly = false;
             column1.Width = 150;
 
@@ -668,7 +592,7 @@ namespace OsEngine.OsOptimizer
 
             DataGridViewColumn column = new DataGridViewColumn();
             column.CellTemplate = cell0;
-            column.HeaderText = @"ТаймФрейм";
+            column.HeaderText = OsLocalization.Optimizer.Label2;
             column.ReadOnly = false;
             column.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridTableTabsSimple.Columns.Add(column);
@@ -681,6 +605,7 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// draw a table for regular tabs
         /// прорисовать таблицу для обычных вкладок
         /// </summary>
         private void PaintTableTabsSimple()
@@ -748,13 +673,14 @@ namespace OsEngine.OsOptimizer
                 timeFrame.Add(TimeFrame.Min30.ToString());
                 timeFrame.Add(TimeFrame.Hour1.ToString());
                 timeFrame.Add(TimeFrame.Hour2.ToString());
+                timeFrame.Add(TimeFrame.Hour4.ToString());
             }
 
 
             int countTab = 0;
             string nameBot = _master.StrategyName;
 
-            BotPanel bot = PanelCreator.GetStrategyForName(nameBot, "");
+            BotPanel bot = PanelCreator.GetStrategyForName(nameBot, "",StartProgram.IsOsOptimizer);
             if (bot == null)
             {
                 return;
@@ -794,6 +720,7 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// the user has changed something in the table of the usual tabs of the robot
         /// пользователь поменял что-то в таблице обычных вкладок робота
         /// </summary>
         void _grid_CellValueChanged(object sender, DataGridViewCellEventArgs e)
@@ -824,40 +751,29 @@ namespace OsEngine.OsOptimizer
             _master.TabsSimpleNamesAndTimeFrames = _tabs;
         }
 
+// table of papers and time frames for indexes
 // таблица Бумаг и таймФреймов для индексов
 
         /// <summary>
+        /// table with tab settings with indexes
         /// таблица с настройками вкладок с индексами
         /// </summary>
         private DataGridView _gridTableTabsIndex;
 
         /// <summary>
+        /// create a table with tab settings with indexes
         /// создать таблицу с настройками вкладок с индексами
         /// </summary>
         private void CreateTableTabsIndex()
         {
-            _gridTableTabsIndex = new DataGridView();
-
-            _gridTableTabsIndex.AllowUserToOrderColumns = true;
-            _gridTableTabsIndex.AllowUserToResizeRows = true;
-            _gridTableTabsIndex.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
-            _gridTableTabsIndex.AllowUserToDeleteRows = false;
-            _gridTableTabsIndex.AllowUserToAddRows = false;
-            _gridTableTabsIndex.RowHeadersVisible = false;
-            _gridTableTabsIndex.SelectionMode = DataGridViewSelectionMode.ColumnHeaderSelect;
-            _gridTableTabsIndex.MultiSelect = false;
-
-            DataGridViewCellStyle style = new DataGridViewCellStyle();
-            style.Alignment = DataGridViewContentAlignment.TopLeft;
-            style.WrapMode = DataGridViewTriState.True;
-            _gridTableTabsIndex.DefaultCellStyle = style;
+            _gridTableTabsIndex  = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.ColumnHeaderSelect, DataGridViewAutoSizeRowsMode.None);
 
             DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
-            cell0.Style = style;
+            cell0.Style = _gridTableTabsIndex.DefaultCellStyle;
 
             DataGridViewColumn column0 = new DataGridViewColumn();
             column0.CellTemplate = cell0;
-            column0.HeaderText = @"№ вкладки";
+            column0.HeaderText = OsLocalization.Optimizer.Message20;
             column0.ReadOnly = true;
             column0.Width = 100;
 
@@ -876,6 +792,7 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// draw a table with tab settings with indexes
         /// прорисовать таблицу с настройками вкладок с индексами
         /// </summary>
         private void PaintTableTabsIndex()
@@ -907,7 +824,7 @@ namespace OsEngine.OsOptimizer
             int countTab = 0;
             string nameBot = _master.StrategyName;
 
-            BotPanel bot = PanelCreator.GetStrategyForName(nameBot, "");
+            BotPanel bot = PanelCreator.GetStrategyForName(nameBot, "", StartProgram.IsOsOptimizer);
             _master.TabsIndexNamesAndTimeFrames = new List<TabIndexEndTimeFrame>();
 
             if (bot == null)
@@ -935,7 +852,7 @@ namespace OsEngine.OsOptimizer
 
                 DataGridViewButtonCell cell2 = new DataGridViewButtonCell();
                 cell2.Style = new DataGridViewCellStyle();
-                cell2.Value = "Настроить";
+                cell2.Value = OsLocalization.Optimizer.Message22;
                 row.Cells.Add(cell2);
 
                 _gridTableTabsIndex.Rows.Insert(0, row);
@@ -943,6 +860,7 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// the user has changed the value in the table with the settings tabs with indexes
         /// пользователь изменил значение в таблице с настройками вкладок с индексами
         /// </summary>
         void _gridTableTabsIndex_CellClick(object sender, DataGridViewCellEventArgs e)
@@ -966,9 +884,10 @@ namespace OsEngine.OsOptimizer
         }
 
 
-// таблица этапов тестирования
+// test phase table/таблица этапов тестирования
 
         /// <summary>
+        /// handler for clicking on the button for creating optimization steps
         /// обработчик для нажатия на кнопку создания этапов оптимизации
         /// </summary>
         private void ButtonCreateOptimizeFazes_Click(object sender, RoutedEventArgs e)
@@ -978,37 +897,25 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// table with optimization steps
         /// таблица с этапами оптимизации
         /// </summary>
         private DataGridView _gridFazes;
 
         /// <summary>
+        /// create a table with optimization phases
         /// создать таблицу с фазами оптимизации
         /// </summary>
         private void CreateTableOptimizeFazes()
         {
-            _gridFazes = new DataGridView();
-
-            _gridFazes.AllowUserToOrderColumns = true;
-            _gridFazes.AllowUserToResizeRows = true;
-            _gridFazes.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
-            _gridFazes.AllowUserToDeleteRows = false;
-            _gridFazes.AllowUserToAddRows = false;
-            _gridFazes.RowHeadersVisible = false;
-            _gridFazes.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            _gridFazes.MultiSelect = false;
-
-            DataGridViewCellStyle style = new DataGridViewCellStyle();
-            style.Alignment = DataGridViewContentAlignment.TopLeft;
-            style.WrapMode = DataGridViewTriState.True;
-            _gridFazes.DefaultCellStyle = style;
+            _gridFazes = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.FullRowSelect, DataGridViewAutoSizeRowsMode.None);
 
             DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
-            cell0.Style = style;
+            cell0.Style = _gridFazes.DefaultCellStyle;
 
             DataGridViewColumn column0 = new DataGridViewColumn();
             column0.CellTemplate = cell0;
-            column0.HeaderText = @"№ шага";
+            column0.HeaderText = OsLocalization.Optimizer.Message23;
             column0.ReadOnly = true;
             column0.Width = 100;
 
@@ -1016,7 +923,7 @@ namespace OsEngine.OsOptimizer
 
             DataGridViewColumn column1 = new DataGridViewColumn();
             column1.CellTemplate = cell0;
-            column1.HeaderText = @"Тип";
+            column1.HeaderText = OsLocalization.Optimizer.Message24;
             column1.ReadOnly = true;
             column1.Width = 150;
 
@@ -1024,21 +931,21 @@ namespace OsEngine.OsOptimizer
 
             DataGridViewColumn column = new DataGridViewColumn();
             column.CellTemplate = cell0;
-            column.HeaderText = @"Начало";
+            column.HeaderText = OsLocalization.Optimizer.Message25;
             column.ReadOnly = true;
             column.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridFazes.Columns.Add(column);
 
             DataGridViewColumn column2 = new DataGridViewColumn();
             column2.CellTemplate = cell0;
-            column2.HeaderText = @"Конец";
+            column2.HeaderText = OsLocalization.Optimizer.Message26;
             column2.ReadOnly = true;
             column2.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridFazes.Columns.Add(column2);
 
             DataGridViewColumn column3 = new DataGridViewColumn();
             column3.CellTemplate = cell0;
-            column3.HeaderText = @"Дней";
+            column3.HeaderText = OsLocalization.Optimizer.Message27;
             column3.ReadOnly = true;
             column3.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridFazes.Columns.Add(column3);
@@ -1049,6 +956,7 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// draw a table with optimization phases
         /// прорисовать таблицу с фазами оптимизации
         /// </summary>
         private void PaintTableOptimizeFazes()
@@ -1096,50 +1004,40 @@ namespace OsEngine.OsOptimizer
             }
         }
 
-// таблица параметров
+// parameter table/таблица параметров
 
         /// <summary>
+        /// parameters for optimizing the current robot
         /// параметры для оптимизации текущего робота
         /// </summary>
         private List<IIStrategyParameter> _parameters;
 
         /// <summary>
+        /// list of included parameters
         /// список включенных параметров
         /// </summary>
-        private List<bool> _parametrsActiv; 
+        private List<bool> _parametrsActiv;
 
         /// <summary>
+        /// table with optimization parameters
         /// таблица с параметрами оптимизации
         /// </summary>
         private DataGridView _gridParametrs;
 
         /// <summary>
+        /// create parameter table
         /// создать таблицу параметров
         /// </summary>
         private void CreateTableParametrs()
         {
-            _gridParametrs = new DataGridView();
-
-            _gridParametrs.AllowUserToOrderColumns = false;
-            _gridParametrs.AllowUserToResizeRows = true;
-            _gridParametrs.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
-            _gridParametrs.AllowUserToDeleteRows = false;
-            _gridParametrs.AllowUserToAddRows = false;
-            _gridParametrs.RowHeadersVisible = false;
-            _gridParametrs.SelectionMode = DataGridViewSelectionMode.CellSelect;
-            _gridParametrs.MultiSelect = false;
-
-            DataGridViewCellStyle style = new DataGridViewCellStyle();
-            style.Alignment = DataGridViewContentAlignment.TopLeft;
-            style.WrapMode = DataGridViewTriState.True;
-            _gridParametrs.DefaultCellStyle = style;
+            _gridParametrs = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.CellSelect, DataGridViewAutoSizeRowsMode.None);
 
             DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
-            cell0.Style = style;
+            cell0.Style = _gridParametrs.DefaultCellStyle;
 
             DataGridViewCheckBoxColumn column0 = new DataGridViewCheckBoxColumn();
             column0.CellTemplate = new DataGridViewCheckBoxCell();
-            column0.HeaderText = @"Вкл/Выкл";
+            column0.HeaderText = OsLocalization.Optimizer.Message28;
             column0.ReadOnly = false;
             column0.Width = 100;
 
@@ -1147,7 +1045,7 @@ namespace OsEngine.OsOptimizer
 
             DataGridViewColumn column1 = new DataGridViewColumn();
             column1.CellTemplate = cell0;
-            column1.HeaderText = @"Название";
+            column1.HeaderText = OsLocalization.Optimizer.Message29;
             column1.ReadOnly = true;
             column1.Width = 150;
 
@@ -1155,35 +1053,35 @@ namespace OsEngine.OsOptimizer
 
             DataGridViewColumn column = new DataGridViewColumn();
             column.CellTemplate = cell0;
-            column.HeaderText = @"Тип";
+            column.HeaderText = OsLocalization.Optimizer.Message24;
             column.ReadOnly = true;
             column1.Width = 100;
             _gridParametrs.Columns.Add(column);
 
             DataGridViewComboBoxColumn column2 = new DataGridViewComboBoxColumn();
             column2.CellTemplate = new DataGridViewComboBoxCell();
-            column2.HeaderText = @"По умолчанию";
+            column2.HeaderText = OsLocalization.Optimizer.Message30;
             column2.ReadOnly = false;
             column2.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridParametrs.Columns.Add(column2);
 
             DataGridViewColumn column22 = new DataGridViewColumn();
             column22.CellTemplate = cell0;
-            column22.HeaderText = @"Стартовое значение";
+            column22.HeaderText = OsLocalization.Optimizer.Message31;
             column22.ReadOnly = false;
             column22.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridParametrs.Columns.Add(column22);
 
             DataGridViewColumn column3 = new DataGridViewColumn();
             column3.CellTemplate = cell0;
-            column3.HeaderText = @"Шаг приращения";
+            column3.HeaderText = OsLocalization.Optimizer.Message32;
             column3.ReadOnly = false;
             column3.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridParametrs.Columns.Add(column3);
 
             DataGridViewColumn column4 = new DataGridViewColumn();
             column4.CellTemplate = cell0;
-            column4.HeaderText = @"Последнее значение";
+            column4.HeaderText = OsLocalization.Optimizer.Message33;
             column4.ReadOnly = false;
             column4.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridParametrs.Columns.Add(column4);
@@ -1194,6 +1092,7 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// draw parameter table
         /// прорисовать таблицу параметров
         /// </summary>
         private void PaintTableParametrs()
@@ -1238,7 +1137,7 @@ namespace OsEngine.OsOptimizer
                 row.Cells.Add(new DataGridViewTextBoxCell());
                 row.Cells[2].Value = _parameters[i].Type;
 
-// значение по умолчанию. Для Булл и Стринг
+// default value. For bool and string/значение по умолчанию. Для Булл и Стринг
 
                 if (_parameters[i].Type == StrategyParameterType.Bool)
                 {
@@ -1271,7 +1170,7 @@ namespace OsEngine.OsOptimizer
                     row.Cells.Add(cell);
                 }
 
-// стартовое значение. Для Булл и Стринг единственное настрамое вручную! поле
+// starting value. For bool and String, the only one is manual! field/стартовое значение. Для Булл и Стринг единственное настрамое вручную! поле
                 if (_parameters[i].Type == StrategyParameterType.Bool)
                 {
                     DataGridViewTextBoxCell cell = new DataGridViewTextBoxCell();
@@ -1301,7 +1200,7 @@ namespace OsEngine.OsOptimizer
                     row.Cells.Add(cell);
                 }
 
-// значение для приращения. Для Булл и Стринг не доступно
+// value for increment. For bool and String is not available/значение для приращения. Для Булл и Стринг не доступно
 
                 if (_parameters[i].Type == StrategyParameterType.Bool)
                 {
@@ -1328,7 +1227,7 @@ namespace OsEngine.OsOptimizer
                     row.Cells.Add(cell);
                 }
 
-// значение для завершающего элемента коллекции. Для Булл и Стринг не доступно
+// value for the final element of the collection. For bool and String is not available/значение для завершающего элемента коллекции. Для Булл и Стринг не доступно
 
                 if (_parameters[i].Type == StrategyParameterType.Bool)
                 {
@@ -1362,6 +1261,7 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// save parameters taking for this value from the parameter table
         /// сохранить параметры взяв для этого значения из таблицы параметров
         /// </summary>
         private void SaveParamsFromTable()
@@ -1393,7 +1293,7 @@ namespace OsEngine.OsOptimizer
 
                         if (valueStart > valueStop)
                         {
-                            MessageBox.Show("Стартовое значение не может быть больше конечного");
+                            MessageBox.Show(OsLocalization.Optimizer.Message34);
                             PaintTableParametrs();
                             return;
                         }
@@ -1428,7 +1328,7 @@ namespace OsEngine.OsOptimizer
 
                         if (valueStart > valueStop)
                         {
-                            MessageBox.Show("Стартовое значение не может быть больше конечного");
+                            MessageBox.Show(OsLocalization.Optimizer.Message34);
                             PaintTableParametrs();
                             return;
                         }
@@ -1462,6 +1362,7 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// the user has changed something in the parameter table
         /// пользователь изменил что-то в таблице параметров
         /// </summary>
         void _gridParametrs_CellValueChanged(object sender, DataGridViewCellEventArgs e)
@@ -1469,40 +1370,28 @@ namespace OsEngine.OsOptimizer
             SaveParamsFromTable();
         }
 
-// таблица фаз для переключения после тестирования
+// phase table for switching after testing/таблица фаз для переключения после тестирования
 
         /// <summary>
+        /// table with optimization steps on the totals tab
         /// таблица с этапами оптимизации на вкладке итогов
         /// </summary>
         private DataGridView _gridFazesEnd;
 
         /// <summary>
+        /// create phase table on totals tabs
         /// создать таблицу фаз на вкладки итогов
         /// </summary>
         private void CreateTableFazes()
         {
-            _gridFazesEnd = new DataGridView();
-
-            _gridFazesEnd.AllowUserToOrderColumns = true;
-            _gridFazesEnd.AllowUserToResizeRows = true;
-            _gridFazesEnd.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
-            _gridFazesEnd.AllowUserToDeleteRows = false;
-            _gridFazesEnd.AllowUserToAddRows = false;
-            _gridFazesEnd.RowHeadersVisible = false;
-            _gridFazesEnd.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            _gridFazesEnd.MultiSelect = false;
-
-            DataGridViewCellStyle style = new DataGridViewCellStyle();
-            style.Alignment = DataGridViewContentAlignment.TopLeft;
-            style.WrapMode = DataGridViewTriState.True;
-            _gridFazesEnd.DefaultCellStyle = style;
+            _gridFazesEnd = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.FullRowSelect, DataGridViewAutoSizeRowsMode.None);
 
             DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
-            cell0.Style = style;
+            cell0.Style = _gridFazesEnd.DefaultCellStyle;
 
             DataGridViewColumn column0 = new DataGridViewColumn();
             column0.CellTemplate = cell0;
-            column0.HeaderText = @"№ шага";
+            column0.HeaderText = OsLocalization.Optimizer.Message23;
             column0.ReadOnly = true;
             column0.Width = 100;
 
@@ -1510,7 +1399,7 @@ namespace OsEngine.OsOptimizer
 
             DataGridViewColumn column1 = new DataGridViewColumn();
             column1.CellTemplate = cell0;
-            column1.HeaderText = @"Тип";
+            column1.HeaderText = OsLocalization.Optimizer.Message24;
             column1.ReadOnly = true;
             column1.Width = 150;
 
@@ -1518,21 +1407,21 @@ namespace OsEngine.OsOptimizer
 
             DataGridViewColumn column = new DataGridViewColumn();
             column.CellTemplate = cell0;
-            column.HeaderText = @"Начало";
+            column.HeaderText = OsLocalization.Optimizer.Message25;
             column.ReadOnly = true;
             column.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridFazesEnd.Columns.Add(column);
 
             DataGridViewColumn column2 = new DataGridViewColumn();
             column2.CellTemplate = cell0;
-            column2.HeaderText = @"Конец";
+            column2.HeaderText = OsLocalization.Optimizer.Message26;
             column2.ReadOnly = true;
             column2.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridFazesEnd.Columns.Add(column2);
 
             DataGridViewColumn column3 = new DataGridViewColumn();
             column3.CellTemplate = cell0;
-            column3.HeaderText = @"Дней";
+            column3.HeaderText = OsLocalization.Optimizer.Message27;
             column3.ReadOnly = true;
             column3.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridFazesEnd.Columns.Add(column3);
@@ -1545,6 +1434,7 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// draw phase table on totals tab
         /// прорисовать таблицу фаз на вкладке итогов
         /// </summary>
         private void PaintTableFazes()
@@ -1593,6 +1483,7 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// the user clicked on the phase table in the totals tab
         /// пользователь кликнул по таблице фаз на вкладке итогов
         /// </summary>
         /// <param name="sender"></param>
@@ -1602,41 +1493,29 @@ namespace OsEngine.OsOptimizer
             PaintTableResults();
         }
 
-        
-// таблица результатов оптимизации
+
+// optimization results table/таблица результатов оптимизации
 
         /// <summary>
+        /// table with optimization steps
         /// таблица с этапами оптимизации
         /// </summary>
         private DataGridView _gridResults;
 
         /// <summary>
+        /// create a table of results
         /// создать таблицу результатов
         /// </summary>
         private void CreateTableResults()
         {
-            _gridResults = new DataGridView();
-
-            _gridResults.AllowUserToOrderColumns = true;
-            _gridResults.AllowUserToResizeRows = true;
-            _gridResults.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
-            _gridResults.AllowUserToDeleteRows = false;
-            _gridResults.AllowUserToAddRows = false;
-            _gridResults.RowHeadersVisible = false;
-            _gridResults.SelectionMode = DataGridViewSelectionMode.ColumnHeaderSelect;
-            _gridResults.MultiSelect = false;
-
-            DataGridViewCellStyle style = new DataGridViewCellStyle();
-            style.Alignment = DataGridViewContentAlignment.TopLeft;
-            style.WrapMode = DataGridViewTriState.True;
-            _gridResults.DefaultCellStyle = style;
+            _gridResults = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.ColumnHeaderSelect, DataGridViewAutoSizeRowsMode.None);
 
             DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
-            cell0.Style = style;
+            cell0.Style = _gridResults.DefaultCellStyle;
 
             DataGridViewColumn column0 = new DataGridViewColumn();
             column0.CellTemplate = cell0;
-            column0.HeaderText = @"Имя";
+            column0.HeaderText = OsLocalization.Optimizer.Message35;
             column0.ReadOnly = true;
             column0.Width = 150;
 
@@ -1644,7 +1523,7 @@ namespace OsEngine.OsOptimizer
 
             DataGridViewColumn column1 = new DataGridViewColumn();
             column1.CellTemplate = cell0;
-            column1.HeaderText = @"Профит в % к депо";
+            column1.HeaderText = OsLocalization.Optimizer.Message36;
             column1.ReadOnly = false;
             column1.Width = 150;
 
@@ -1652,28 +1531,28 @@ namespace OsEngine.OsOptimizer
 
             DataGridViewColumn column = new DataGridViewColumn();
             column.CellTemplate = cell0;
-            column.HeaderText = @"Средняя прибыль в %";
+            column.HeaderText = OsLocalization.Optimizer.Message37;
             column.ReadOnly = false;
             column.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridResults.Columns.Add(column);
 
             DataGridViewButtonColumn column2 = new DataGridViewButtonColumn();
             column2.CellTemplate = new DataGridViewButtonCell();
-            column2.HeaderText = @"Параметры";
+            column2.HeaderText = OsLocalization.Optimizer.Message38;
             column2.ReadOnly = true;
             column2.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridResults.Columns.Add(column2);
 
             DataGridViewButtonColumn column3 = new DataGridViewButtonColumn();
             column3.CellTemplate = new DataGridViewButtonCell();
-            column3.HeaderText = @"Журнал";
+            column3.HeaderText = OsLocalization.Optimizer.Message39;
             column3.ReadOnly = true;
             column3.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridResults.Columns.Add(column3);
 
             DataGridViewButtonColumn column4 = new DataGridViewButtonColumn();
             column4.CellTemplate = new DataGridViewButtonCell();
-            column4.HeaderText = @"График";
+            column4.HeaderText = OsLocalization.Optimizer.Message40;
             column4.ReadOnly = true;
             column4.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _gridResults.Columns.Add(column4);
@@ -1684,6 +1563,7 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// draw a table of results
         /// прорисовать таблицу результатов
         /// </summary>
         private void PaintTableResults()
@@ -1762,15 +1642,15 @@ namespace OsEngine.OsOptimizer
                 row.Cells.Add(cell3);
 
                 DataGridViewButtonCell cell4 = new DataGridViewButtonCell();
-                cell4.Value = "Параметры";
+                cell4.Value = OsLocalization.Optimizer.Message38;
                 row.Cells.Add(cell4);
 
                 DataGridViewButtonCell cell5 = new DataGridViewButtonCell();
-                cell5.Value = "Журнал сделок";
+                cell5.Value = OsLocalization.Optimizer.Message39;
                 row.Cells.Add(cell5);
 
                 DataGridViewButtonCell cell6 = new DataGridViewButtonCell();
-                cell6.Value = "График";
+                cell6.Value = OsLocalization.Optimizer.Message40;
                 row.Cells.Add(cell6);
 
                 _gridResults.Rows.Add(row);
@@ -1780,6 +1660,7 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// user clicked results table
         /// пользователь кликнул по таблице результатов
         /// </summary>
         void _gridResults_SelectionChanged(object sender, EventArgs e)
@@ -1804,11 +1685,13 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// robot sorting type in the results table
         /// тип сортировки роботов в таблице результатов
         /// </summary>
         private SortBotsType _sortBotsType;
 
         /// <summary>
+        /// user clicked a button in the result table
         /// пользователь нажал на кнопку в таблице результатов
         /// </summary>
         void _gridResults_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
@@ -1834,6 +1717,11 @@ namespace OsEngine.OsOptimizer
             else
             {
                 bots = _botsOutOfSample;
+            }
+
+            if (e.RowIndex >= bots.Count)
+            {
+                return;
             }
 
             if (_sortBotsType == SortBotsType.TotalProfit)
@@ -1903,7 +1791,7 @@ namespace OsEngine.OsOptimizer
                     panelsJournal.Add(botPanel);
                 
 
-                _journalUi = new JournalUi(panelsJournal);
+                _journalUi = new JournalUi(panelsJournal,StartProgram.IsOsOptimizer);
                 _journalUi.Closed += _journalUi_Closed;
                 _journalUi.Show();
             }
@@ -1914,11 +1802,13 @@ namespace OsEngine.OsOptimizer
         }
 
         /// <summary>
+        /// GUI of the journal
         /// ГУИ журнала
         /// </summary>
         private JournalUi _journalUi;
 
         /// <summary>
+        /// inbound event: log closed by user
         /// входящее событие: журнал закрыт пользователем
         /// </summary>
         void _journalUi_Closed(object sender, EventArgs e)
@@ -1930,16 +1820,19 @@ namespace OsEngine.OsOptimizer
     }
 
     /// <summary>
+    /// sorting type in the result table
     /// тип сортировки в таблице результатов
     /// </summary>
     public enum SortBotsType
     {
         /// <summary>
+        /// by total profit
         /// по общему профиту
         /// </summary>
         TotalProfit,
 
         /// <summary>
+        /// on average profit from a single transaction
         /// по среднему профиту с одной сделки
         /// </summary>
         MiddleProfit

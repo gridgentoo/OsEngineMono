@@ -1,11 +1,7 @@
-﻿
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Windows.Documents;
 using System.Xml;
 using OkonkwoOandaV20;
 using OkonkwoOandaV20.TradeLibrary.DataTypes.Account;
@@ -16,6 +12,7 @@ using OkonkwoOandaV20.TradeLibrary.DataTypes.Order;
 using OkonkwoOandaV20.TradeLibrary.DataTypes.Transaction;
 using OkonkwoOandaV20.TradeLibrary.Primitives;
 using OsEngine.Entity;
+using OsEngine.Language;
 using OsEngine.Logging;
 using Order = OsEngine.Entity.Order;
 
@@ -23,13 +20,14 @@ namespace OsEngine.Market.Servers.Oanda
 {
     public class OandaClient
     {
-        // коннект
+        // connect / коннект
 
         private bool _isConnected;
 
         private EEnvironment _environment;
 
         /// <summary>
+        /// connect to Oanda server
         /// установить соединение сервером Oanda
         /// </summary>
         public void Connect(string id, string token, bool isJuniorConnect)
@@ -46,7 +44,7 @@ namespace OsEngine.Market.Servers.Oanda
             if (string.IsNullOrEmpty(token))
             {
 
-                SendLogMessage("Токен не может быть пустым! Получите уникальный ключ доступа по адресу: https://www.oanda.com/account/tpa/personal_token", LogMessageType.Error);
+                SendLogMessage(OsLocalization.Market.Message77 + " https://www.oanda.com/account/tpa/personal_token", LogMessageType.Error);
                 return;
             }
 
@@ -66,6 +64,7 @@ namespace OsEngine.Market.Servers.Oanda
         }
 
         /// <summary>
+        /// disconnect
         /// отключиться от TCP сервера TWS
         /// </summary>
         public void Disconnect()
@@ -76,9 +75,11 @@ namespace OsEngine.Market.Servers.Oanda
             }
         }
 
+// portfolios
 // Портфели
 
         /// <summary>
+        /// take portfolios
         /// взять портфели
         /// </summary>
         public async void GetPortfolios()
@@ -93,7 +94,7 @@ namespace OsEngine.Market.Servers.Oanda
             {
                 List<AccountProperties> result = await Rest20.GetAccountListAsync();
 
-                // в result что-то лежит
+                // in the result, something is / в result что-то лежит
 
                 foreach (var accountName in result)
                 {
@@ -116,14 +117,13 @@ namespace OsEngine.Market.Servers.Oanda
 
         }
 
+// instruments 
 // инструменты
 
         public async void GetSecurities(List<Portfolio> portfolios)
         {
             if (portfolios == null || portfolios.Count == 0)
             {
-                SendLogMessage("Прервана попытка получить инструменты раньше авторизации аккаунта",
-                    LogMessageType.System);
                 return;
             }
 
@@ -170,7 +170,7 @@ namespace OsEngine.Market.Servers.Oanda
 
         private List<Instrument> _allInstruments = new List<Instrument>();
 
-
+// thread requesting trades and depths
 // поток запрашивающий трейды и стаканы
 
         private PricingSession _pricingStream;
@@ -285,7 +285,7 @@ namespace OsEngine.Market.Servers.Oanda
                 newOrder.NumberUser = Convert.ToInt32(order.clientOrderID);
                 newOrder.State = OrderStateType.Cancel;
                 newOrder.TimeCallBack = DateTime.Parse(order.time);
-
+                newOrder.TimeCancel = newOrder.TimeCallBack;
                 if (NewOrderEvent != null)
                 {
                     NewOrderEvent(newOrder);
@@ -334,11 +334,13 @@ namespace OsEngine.Market.Servers.Oanda
             }
         }
 
+// work with orders
 // работа с ордерами
 
         private List<Order> _orders = new List<Order>(); 
 
         /// <summary>
+        /// execute orders in the exchange
         /// исполнить ордер на бирже
         /// </summary>
         public async void ExecuteOrder(Order order)
@@ -400,6 +402,7 @@ namespace OsEngine.Market.Servers.Oanda
         }
 
         /// <summary>
+        /// cancel order
         /// отозвать ордер
         /// </summary>
         public void CanselOrder(Order order)
@@ -439,6 +442,7 @@ namespace OsEngine.Market.Servers.Oanda
         }
 /*
         /// <summary>
+        /// work place of thread monitoring order state in the system
         /// место работы потока следящего за состоянием ордеров в системе
         /// </summary>
         private void OrderListenThreadArea()
@@ -480,6 +484,7 @@ namespace OsEngine.Market.Servers.Oanda
         }
 
         /// <summary>
+        /// list of orders in the system
         /// список ордеров в системе
         /// </summary>
         private List<IOrder> _orders = new List<IOrder>();
@@ -511,6 +516,7 @@ namespace OsEngine.Market.Servers.Oanda
         }
 
         /// <summary>
+        /// send order to up
         /// выслать ордер на верх
         /// </summary>
         /// <param name="order"></param>
@@ -572,46 +578,56 @@ namespace OsEngine.Market.Servers.Oanda
 
         }*/
 
+// outgoing events
 // исходящие события
 
         /// <summary>
+        /// new trade
         /// новый трейд
         /// </summary>
         public event Action<Trade> NewTradeEvent;
 
         /// <summary>
+        /// new order in the system
         /// новый ордер в системе
         /// </summary>
         public event Action<Order> NewOrderEvent;
 
         /// <summary>
+        /// my new trade in the system
         /// новая моя сделка в системе
         /// </summary>
         public event Action<MyTrade> NewMyTradeEvent;
 
         /// <summary>
+        /// updated portfolio in the system
         /// в системе обновился портфель
         /// </summary>
         public event Action<Portfolio> PortfolioChangeEvent;
 
         /// <summary>
+        /// pdated depth in the system
         /// в системе обновился портфель
         /// </summary>
         public event Action<MarketDepth> MarketDepthChangeEvent;
 
         /// <summary>
+        /// successfully connected to server
         /// успешно подключились к серверу TWS
         /// </summary>
         public event Action ConnectionSucsess;
 
         /// <summary>
+        /// connection with server is lost
         /// соединение с TWS разорвано
         /// </summary>
         public event Action ConnectionFail;
 
+        // logging
         // логирование работы
 
         /// <summary>
+        /// add a new log message
         /// добавить в лог новое сообщение
         /// </summary>
         private void SendLogMessage(string message, LogMessageType type)
@@ -623,6 +639,7 @@ namespace OsEngine.Market.Servers.Oanda
         }
 
         /// <summary>
+        /// outgoing message for log
         /// исходящее сообщение для лога
         /// </summary>
         public event Action<string, LogMessageType> LogMessageEvent;

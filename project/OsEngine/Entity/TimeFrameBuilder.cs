@@ -1,5 +1,6 @@
 ﻿/*
- *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
+ * Your rights to use code governed by this license http://o-s-a.net/doc/license_simple_engine.pdf
+ * Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
 using System;
@@ -9,6 +10,7 @@ namespace OsEngine.Entity
 {
 
     /// <summary>
+    /// class that stores the time frame settings for the robot
     /// класс хранящий настройки таймФрейма для робота
     /// </summary>
     public class TimeFrameBuilder
@@ -43,6 +45,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// upload
         /// загрузить
         /// </summary>
         private void Load()
@@ -70,7 +73,10 @@ namespace OsEngine.Entity
                     _volumeToCloseCandleInVolumeType = Convert.ToDecimal(reader.ReadLine());
                     _rencoPunktsToCloseCandleInRencoType = Convert.ToDecimal(reader.ReadLine());
                     _deltaPeriods = Convert.ToDecimal(reader.ReadLine());
-
+                    _rencoIsBuildShadows = Convert.ToBoolean(reader.ReadLine());
+                    _reversCandlesPunktsMinMove = Convert.ToDecimal(reader.ReadLine());
+                    _reversCandlesPunktsBackMove = Convert.ToDecimal(reader.ReadLine());
+                    _rangeCandlesPunkts = Convert.ToDecimal(reader.ReadLine());
                     reader.Close();
                 }
             }
@@ -81,6 +87,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// save the object settings to a file
         /// сохранить настройки объекта в файл
         /// </summary>
         public void Save()
@@ -101,7 +108,10 @@ namespace OsEngine.Entity
                     writer.WriteLine(_volumeToCloseCandleInVolumeType);
                     writer.WriteLine(_rencoPunktsToCloseCandleInRencoType);
                     writer.WriteLine(_deltaPeriods);
-
+                    writer.WriteLine(_rencoIsBuildShadows);
+                    writer.WriteLine(_reversCandlesPunktsMinMove);
+                    writer.WriteLine(_reversCandlesPunktsBackMove);
+                    writer.WriteLine(_rangeCandlesPunkts);
                     writer.Close();
                 }
             }
@@ -112,11 +122,13 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// is it possible to save the data
         /// можно ли сохранять данные
         /// </summary>
         private bool _canSave;
 
         /// <summary>
+        /// Delete object settings
         /// удалить настройки объекта
         /// </summary>
         public void Delete()
@@ -128,6 +140,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// Timeframe of candlesticks on which the connector is signed
         /// ТаймФрейм свечек на который подписан коннектор
         /// </summary>
         public TimeFrame TimeFrame
@@ -212,6 +225,10 @@ namespace OsEngine.Entity
                         {
                             _timeFrameSpan = new TimeSpan(0, 2, 0, 0);
                         }
+                        else if (value == TimeFrame.Hour4)
+                        {
+                            _timeFrameSpan = new TimeSpan(0, 4, 0, 0);
+                        }
                         else if (value == TimeFrame.Day)
                         {
                             _timeFrameSpan = new TimeSpan(0, 24, 0, 0);
@@ -228,6 +245,7 @@ namespace OsEngine.Entity
         private TimeFrame _timeFrame;
 
         /// <summary>
+        /// TimeFrame of candles in the form of TimeSpan on which the connector is signed
         /// ТаймФрейм свечек в виде TimeSpan на который подписан коннектор
         /// </summary>
         public TimeSpan TimeFrameTimeSpan
@@ -237,6 +255,7 @@ namespace OsEngine.Entity
         private TimeSpan _timeFrameSpan;
 
         /// <summary>
+        /// delta period to close the candle in the delta
         /// переод дельты для закрытия свечи по дельте
         /// </summary>
         public decimal DeltaPeriods
@@ -256,6 +275,7 @@ namespace OsEngine.Entity
         private decimal _deltaPeriods;
 
         /// <summary>
+        /// how many trades we pack candlesticks when the candlestick closing mode is enabled
         /// по сколько трейдов пакуем свечи когда включен режим закрытия свечи по кол-ву трейдов
         /// </summary>
         public int TradeCount
@@ -273,6 +293,7 @@ namespace OsEngine.Entity
         private int _tradeCount;
 
         /// <summary>
+        /// is it worth the non-trading periods
         /// нужно ли стоить неторговые периоды
         /// </summary>
         public bool SetForeign
@@ -290,6 +311,7 @@ namespace OsEngine.Entity
         private bool _setForeign;
 
         /// <summary>
+        /// data from which we collect candles: from ticks or glasses
         /// данные из которых собираем свечи: из тиков или из стаканов
         /// </summary>
         public CandleMarketDataType CandleMarketDataType
@@ -307,6 +329,7 @@ namespace OsEngine.Entity
         private CandleMarketDataType _candleCreateType;
 
         /// <summary>
+        /// the type of candle assembly: normal, Renco, delta, 
         /// тип сборки свечей: обычный, ренко, дельта, 
         /// </summary>
         public CandleCreateMethodType CandleCreateMethodType
@@ -324,6 +347,7 @@ namespace OsEngine.Entity
         private CandleCreateMethodType _seriesCreateMethodType;
 
         /// <summary>
+        /// the volume required to close the candlestick when the mode of closing the candlestick by volume is selected
         /// объём необходимый для закрытия свечи, когда выбран режим закрытия свечи по объёму
         /// </summary>
         public decimal VolumeToCloseCandleInVolumeType
@@ -338,6 +362,7 @@ namespace OsEngine.Entity
         private decimal _volumeToCloseCandleInVolumeType;
 
         /// <summary>
+        /// the movement required to close the candle when the candle mode is set to Renko
         /// движение необходимое для закрытия свечи, когда выбран режим свечей ренко
         /// </summary>
         public decimal RencoPunktsToCloseCandleInRencoType
@@ -350,86 +375,186 @@ namespace OsEngine.Entity
             }
         }
         private decimal _rencoPunktsToCloseCandleInRencoType;
+
+        /// <summary>
+        /// if we're watching the shadows at the candle when we've chosen Renko. true - build
+        /// стороим ли мы тени у свечи когда выбран ренко. true - строим
+        /// </summary>
+        public bool RencoIsBuildShadows
+        {
+            get { return _rencoIsBuildShadows; }
+            set
+            {
+                _rencoIsBuildShadows = value;
+                Save();
+            }
+        }
+        private bool _rencoIsBuildShadows;
+
+        /// <summary>
+        /// Minimum movement for riverse bars
+        /// минимальное движение для риверсивных баров
+        /// </summary>
+        public decimal ReversCandlesPunktsMinMove
+        {
+            get { return _reversCandlesPunktsMinMove; }
+            set
+            {
+                if (value == _reversCandlesPunktsMinMove)
+                {
+                    return;
+                }
+                _reversCandlesPunktsMinMove = value;
+                Save();
+            }
+        }
+
+        private decimal _reversCandlesPunktsMinMove;
+
+        /// <summary>
+        /// rollback value for reverse bars
+        /// величина отката для риверсивных баров
+        /// </summary>
+        public decimal ReversCandlesPunktsBackMove
+        {
+            get { return _reversCandlesPunktsBackMove; }
+            set
+            {
+                if (value == _reversCandlesPunktsBackMove)
+                {
+                    return;
+                }
+                _reversCandlesPunktsBackMove = value;
+                Save();
+            }
+        }
+
+        private decimal _reversCandlesPunktsBackMove;
+
+        /// <summary>
+        /// value of rage bars
+        /// величина рейдж баров
+        /// </summary>
+        public decimal RangeCandlesPunkts
+        {
+            get { return _rangeCandlesPunkts; }
+            set
+            {
+                if (value == _rangeCandlesPunkts)
+                {
+                    return;
+                }
+                _rangeCandlesPunkts = value;
+                Save();
+            }
+        }
+
+        private decimal _rangeCandlesPunkts;
     }
 
     /// <summary>
+    /// Os.Engine timeframes
     /// таймФреймы Os.Engine
     /// </summary>
     public enum TimeFrame
     {
         /// <summary>
+        /// one second
         /// одна секунда
         /// </summary>
         Sec1,
         /// <summary>
+        /// two seconds
         /// две секунды
         /// </summary>
         Sec2,
         /// <summary>
+        /// five seconds
         /// пять секунд
         /// </summary>
         Sec5,
         /// <summary>
+        /// ten seconds
         /// десять секунд
         /// </summary>
         Sec10,
         /// <summary>
+        /// fifteen seconds
         /// пятнадцать секунд
         /// </summary>
         Sec15,
         /// <summary>
+        /// twenty seconds
         /// двадцать секунд
         /// </summary>
         Sec20,
         /// <summary>
+        /// thirty seconds
         /// тридцать секунд
         /// </summary>
         Sec30,
         /// <summary>
+        /// one minute
         /// одна минута
         /// </summary>
         Min1,
         /// <summary>
+        /// two minutes
         /// две минуты
         /// </summary>
         Min2,
         /// <summary>
+        /// three minutes
         /// три минуты
         /// </summary>
         Min3,
         /// <summary>
+        /// five minutes
         /// пять минут
         /// </summary>
         Min5,
         /// <summary>
+        /// ten minutes
         /// десять минут
         /// </summary>
         Min10,
         /// <summary>
+        /// fifteen minutes
         /// пятнадцать минут
         /// </summary>
         Min15,
         /// <summary>
+        /// twenty minutes
         /// двадцать минут
         /// </summary>
         Min20,
         /// <summary>
+        /// thirty minutes
         /// тридцать минут
         /// </summary>
         Min30,
         /// <summary>
+        /// Forty-five minutes.
         /// сорок пять минут
         /// </summary>
         Min45,
         /// <summary>
+        /// one hour
         /// один час
         /// </summary>
         Hour1,
         /// <summary>
+        /// two hours
         /// два часа
         /// </summary>
         Hour2,
         /// <summary>
+        /// two hours
+        /// два часа
+        /// </summary>
+        Hour4,
+        /// <summary>
+        /// day
         /// день
         /// </summary>
         Day

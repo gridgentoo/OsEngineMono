@@ -1,775 +1,422 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using OkonkwoOandaV20.TradeLibrary.DataTypes.Communications;
 using OsEngine.Entity;
+using OsEngine.Language;
 using OsEngine.Logging;
-using OsEngine.Market.Servers.Binance.BinanceEntity;
-using OsEngine.Market.Servers.BitStamp;
+using System.Threading;
 using OsEngine.Market.Servers.Entity;
-using QuikSharp.DataStructures;
-using AccountResponse = OsEngine.Market.Servers.Binance.BinanceEntity.AccountResponse;
-using Candle = OsEngine.Entity.Candle;
-using TradeResponse = OsEngine.Market.Servers.Binance.BinanceEntity.TradeResponse;
 
 namespace OsEngine.Market.Servers.Binance
 {
-    public class BinanceServer : IServer
+    /// <summary>
+    /// server Binance
+    /// сервер Binance
+    /// </summary>
+    public class BinanceServer:AServer
     {
+        public BinanceServer()
+        {
+            BinanceServerRealization realization = new BinanceServerRealization();
+            ServerRealization = realization;
+
+            CreateParameterString(OsLocalization.Market.ServerParamPublicKey,"");
+            CreateParameterPassword(OsLocalization.Market.ServerParamSecretKey, "");
+        }
+        
         /// <summary>
-        /// конструктор
+        /// instrument history query
+        /// запрос истории по инструменту
         /// </summary>
-        public BinanceServer(bool neadToLoadTicks)
+        public List<Candle> GetCandleHistory(string nameSec, TimeSpan tf)
+        {
+            return ((BinanceServerRealization)ServerRealization).GetCandleHistory(nameSec, tf);
+        }
+    }
+
+    public class BinanceServerRealization : IServerRealization
+    {
+        public BinanceServerRealization()
         {
             ServerStatus = ServerConnectStatus.Disconnect;
-            ServerType = ServerType.Binance;
-
-            Load();
-
-            _ordersToSend = new ConcurrentQueue<Order>();
-            _tradesToSend = new ConcurrentQueue<List<Trade>>();
-            _portfolioToSend = new ConcurrentQueue<List<Portfolio>>();
-            _securitiesToSend = new ConcurrentQueue<List<Security>>();
-            _myTradesToSend = new ConcurrentQueue<MyTrade>();
-            _newServerTime = new ConcurrentQueue<DateTime>();
-            _candleSeriesToSend = new ConcurrentQueue<CandleSeries>();
-            _marketDepthsToSend = new ConcurrentQueue<MarketDepth>();
-            _bidAskToSend = new ConcurrentQueue<BidAskSender>();
-            _ordersToExecute = new ConcurrentQueue<Order>();
-            _ordersToCansel = new ConcurrentQueue<Order>();
-
-            _tickStorage = new ServerTickStorage(this);
-            _tickStorage.NeadToSave = NeadToSaveTicks;
-            _tickStorage.DaysToLoad = CountDaysTickNeadToSave;
-            _tickStorage.TickLoadedEvent += _tickStorage_TickLoadedEvent;
-            _tickStorage.LogMessageEvent += SendLogMessage;
-
-            if (neadToLoadTicks)
-            {
-                _tickStorage.LoadTick();
-            }
-
-            _logMaster = new Log("BinanceServer");
-            _logMaster.Listen(this);
-
-            _serverStatusNead = ServerConnectStatus.Disconnect;
-
-            _threadPrime = new Thread(PrimeThreadArea);
-            _threadPrime.CurrentCulture = new CultureInfo("ru-RU");
-            _threadPrime.IsBackground = true;
-            _threadPrime.Start();
-
-            Thread threadDataSender = new Thread(SenderThreadArea);
-            threadDataSender.CurrentCulture = new CultureInfo("ru-RU");
-            threadDataSender.IsBackground = true;
-            threadDataSender.Start();
-
-            Thread ordersExecutor = new Thread(ExecutorOrdersThreadArea);
-            ordersExecutor.CurrentCulture = new CultureInfo("ru-RU");
-            ordersExecutor.IsBackground = true;
-            ordersExecutor.Start();
         }
 
-        //сервис
-
         /// <summary>
-        /// количество дней назад, тиковые данные по которым нужно сохранять
+        /// server type
+        /// тип сервера
         /// </summary>
-        public int CountDaysTickNeadToSave
+        public ServerType ServerType
         {
-            get { return _countDaysTickNeadToSave; }
-            set
-            {
-                if (_tickStorage == null)
-                {
-                    return;
-                }
-                _countDaysTickNeadToSave = value;
-                _tickStorage.DaysToLoad = value;
-            }
-        }
-        private int _countDaysTickNeadToSave;
-
-        /// <summary>
-        /// нужно ли сохранять тики 
-        /// </summary>
-        public bool NeadToSaveTicks
-        {
-            get { return _neadToSaveTicks; }
-            set
-            {
-                _neadToSaveTicks = value;
-                _tickStorage.NeadToSave = value;
-            }
-        }
-        private bool _neadToSaveTicks;
-
-        /// <summary>
-        /// показать настройки
-        /// </summary>
-        public void ShowDialog()
-        {
-            BinanceServerUi ui = new BinanceServerUi(this, _logMaster);
-            ui.ShowDialog();
+            get { return ServerType.Binance; }
         }
 
         /// <summary>
-        /// публичный ключ пользователя
+        /// server parameters
+        /// параметры сервера
         /// </summary>
-        public string UserKey;
+        public List<IServerParameter> ServerParameters { get; set; }
 
         /// <summary>
-        /// секретный ключ пользователя
+        /// server time
+        /// время сервера
         /// </summary>
-        public string UserPrivateKey;
+        public DateTime ServerTime { get; set; }
 
-        /// <summary>
-        /// загрузить настройки сервера из файла
-        /// </summary>
-        public void Load()
-        {
-            if (!File.Exists(@"Engine\" + @"BinanceServer.txt"))
-            {
-                return;
-            }
-
-            try
-            {
-                using (StreamReader reader = new StreamReader(@"Engine\" + @"BinanceServer.txt"))
-                {
-                    UserKey = reader.ReadLine();
-                    UserPrivateKey = reader.ReadLine();
-                    _countDaysTickNeadToSave = Convert.ToInt32(reader.ReadLine());
-                    _neadToSaveTicks = Convert.ToBoolean(reader.ReadLine());
-
-                    reader.Close();
-                }
-            }
-            catch (Exception)
-            {
-                // ignored
-            }
-        }
-
-        /// <summary>
-        /// сохранить настройки сервера в файл
-        /// </summary>
-        public void Save()
-        {
-            try
-            {
-                using (StreamWriter writer = new StreamWriter(@"Engine\" + @"BinanceServer.txt", false))
-                {
-
-                    writer.WriteLine(UserKey);
-                    writer.WriteLine(UserPrivateKey);
-                    writer.WriteLine(CountDaysTickNeadToSave);
-                    writer.WriteLine(NeadToSaveTicks);
-
-                    writer.Close();
-                }
-            }
-            catch (Exception)
-            {
-                // ignored
-            }
-        }
-
-        // подключение/отключение
-
-        /// <summary>
-        /// нужный статус сервера. Нужен потоку который следит за соединением
-        /// В зависимости от этого поля управляет соединением
-        /// </summary>
-        private ServerConnectStatus _serverStatusNead;
-
-        /// <summary>
-        /// запустить сервер. Подключиться к торговой системе
-        /// </summary>
-        public void StartServer()
-        {
-            if (_clientBinance != null)
-            {
-                _clientBinance.ApiKey = UserKey;
-                _clientBinance.SecretKey = UserPrivateKey;
-            }
-
-            _serverStatusNead = ServerConnectStatus.Connect;
-        }
-
-        /// <summary>
-        /// остановить сервер
-        /// </summary>
-        public void StopServer()
-        {
-            _serverStatusNead = ServerConnectStatus.Disconnect;
-        }
-
-        /// <summary>
-        /// пришло оповещение от клиента, что соединение установлено
-        /// </summary>
-        void Сlient_Connected()
-        {
-            ServerStatus = ServerConnectStatus.Connect;
-        }
-
-
-        // статус соединения
-
-        private ServerConnectStatus _serverConnectStatus;
-
-        /// <summary>
-        /// статус сервера
-        /// </summary>
-        public ServerConnectStatus ServerStatus
-        {
-            get { return _serverConnectStatus; }
-            private set
-            {
-                if (value != _serverConnectStatus)
-                {
-                    _serverConnectStatus = value;
-                    SendLogMessage(_serverConnectStatus + " Изменилось состояние соединения", LogMessageType.Connect);
-                    if (ConnectStatusChangeEvent != null)
-                    {
-                        ConnectStatusChangeEvent(_serverConnectStatus.ToString());
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// изменилось состояние соединения
-        /// </summary>
-        public event Action<string> ConnectStatusChangeEvent;
-
-
-        // работа основного потока !!!!!!
-
-        /// <summary>
-        /// основной поток, следящий за подключением, загрузкой портфелей и бумаг, пересылкой данных на верх
-        /// </summary>
-        private Thread _threadPrime;
-
-        /// <summary>
-        /// место в котором контролируется соединение.
-        /// опрашиваются потоки данных
-        /// </summary>
-        [System.Runtime.ExceptionServices.HandleProcessCorruptedStateExceptionsAttribute]
-        private void PrimeThreadArea()
-        {
-            while (true)
-            {
-                Thread.Sleep(1000);
-                try
-                {
-                    if (_clientBinance == null)
-                    {
-                        SendLogMessage("Создаём коннектор Binance", LogMessageType.System);
-                        CreateNewServer();
-                        continue;
-                    }
-
-                    bool stateIsActiv = _clientBinance.IsConnected;
-
-                    if (stateIsActiv == false && _serverStatusNead == ServerConnectStatus.Connect)
-                    {
-                        SendLogMessage("Запущена процедура активации подключения", LogMessageType.System);
-                        //Dispose();
-                        CreateNewServer();
-                        Connect();
-                        continue;
-                    }
-
-                    if (stateIsActiv && _serverStatusNead == ServerConnectStatus.Disconnect)
-                    {
-                        SendLogMessage("Запущена процедура отключения подключения", LogMessageType.System);
-                        Dispose();
-                        continue;
-                    }
-
-                    if (stateIsActiv == false)
-                    {
-                        continue;
-                    }
-
-                    if (_candleManager == null)
-                    {
-                        SendLogMessage("Создаём менеджер свечей", LogMessageType.System);
-                        StartCandleManager();
-                        continue;
-                    }
-
-                    if (_getPortfoliosAndSecurities == false)
-                    {
-                        SendLogMessage("Скачиваем бумаги и портфели", LogMessageType.System);
-                        SubscribePortfolio();
-                        GetSecurities();
-                        _getPortfoliosAndSecurities = true;
-                        continue;
-                    }
-
-                    if (_portfolios == null || _portfolios.Count == 0)
-                    {
-                        SubscribePortfolio();
-                    }
-
-                    if (_startListeningPortfolios == false)
-                    {
-                        if (_portfolios != null)
-                        {
-                            SendLogMessage("Подписываемся на обновления портфелей. Берём активные ордера",
-                                LogMessageType.System);
-                            _startListeningPortfolios = true;
-                        }
-                    }
-                }
-                catch (Exception error)
-                {
-                    SendLogMessage("КРИТИЧЕСКАЯ ОШИБКА. Реконнект", LogMessageType.Error);
-                    SendLogMessage(error.ToString(), LogMessageType.Error);
-                    ServerStatus = ServerConnectStatus.Disconnect;
-                    Dispose(); // очищаем данные о предыдущем коннекторе
-
-                    Thread.Sleep(5000);
-                    // переподключаемся
-                    _threadPrime = new Thread(PrimeThreadArea);
-                    _threadPrime.CurrentCulture = new CultureInfo("ru-RU");
-                    _threadPrime.IsBackground = true;
-                    _threadPrime.Start();
-
-                    if (NeadToReconnectEvent != null)
-                    {
-                        NeadToReconnectEvent();
-                    }
-
-                    return;
-                }
-            }
-
-        }
-
-        /// <summary>
-        /// время последнего старта сервера
-        /// </summary>
-        private DateTime _lastStartServerTime = DateTime.MinValue;
-
-        /// <summary>
-        /// включена ли прослушка портфелей
-        /// </summary>
-        private bool _startListeningPortfolios;
-
-        /// <summary>
-        /// скачаны ли портфели и бумаги
-        /// </summary>
-        private bool _getPortfoliosAndSecurities;
-
-        /// <summary>
-        /// создать новое подключение
-        /// </summary>
-        private void CreateNewServer()
-        {
-            if (_clientBinance == null)
-            {
-                _clientBinance = new BinanceClient(UserKey, UserPrivateKey);
-                _clientBinance.Connected += Сlient_Connected;
-                _clientBinance.UpdatePairs += _clientBitStamp_UpdatePairs;
-                _clientBinance.Disconnected += ClientnDisconnected;
-                _clientBinance.NewPortfolio += NewPortfolios;
-                _clientBinance.UpdatePortfolio += UpdatePortfolios;
-                _clientBinance.UpdateMarketDepth += UpdateMarketDepth;
-                _clientBinance.NewTradesEvent += NewTrades;
-                _clientBinance.MyTradeEvent += NewMyTrade;
-                _clientBinance.MyOrderEvent += Binance_UpdateOrder;
-                _clientBinance.LogMessageEvent += SendLogMessage;
-            }
-        }
-
-        /// <summary>
-        /// начать процесс подключения
-        /// </summary>
-        private void Connect()
-        {
-            _lastStartServerTime = DateTime.Now;
-
-            _clientBinance.Connect();
-            Thread.Sleep(1000);
-        }
-
-        /// <summary>
-        /// соединение с клиентом разорвано
-        /// </summary>
-        private void ClientnDisconnected()
-        {
-            SendLogMessage("Соединение разорвано", LogMessageType.System);
-            ServerStatus = ServerConnectStatus.Disconnect;
-
-            if (NeadToReconnectEvent != null)
-            {
-                NeadToReconnectEvent();
-            }
-        }
-
-        /// <summary>
-        /// запускает скачиватель свечек
-        /// </summary>
-        private void StartCandleManager()
-        {
-            if (_candleManager == null)
-            {
-                _candleManager = new CandleManager(this);
-                _candleManager.CandleUpdateEvent += _candleManager_CandleUpdateEvent;
-                _candleManager.LogMessageEvent += SendLogMessage;
-            }
-        }
-
-        /// <summary>
-        /// подписываемся на обновление портфеля и позиций
-        /// </summary>
-        private void SubscribePortfolio()
-        {
-            _clientBinance.GetBalance();
-            Thread.Sleep(2000);
-        }
+// requests
+// запросы
 
         /// <summary>
         /// binance client
         /// </summary>
-        private BinanceClient _clientBinance;
+        private BinanceClient _client;
 
         /// <summary>
-        /// привести программу к моменту запуска. Очистить все объекты участвующие в подключении к серверу
+        /// release API
+        /// освободить апи
         /// </summary>
-        [System.Runtime.ExceptionServices.HandleProcessCorruptedStateExceptionsAttribute]
-        private void Dispose()
+        public void Dispose()
         {
-            if (_clientBinance != null)
+            if (_client != null)
             {
-                _clientBinance.Dispose();
+                _client.Dispose();
 
-                _clientBinance.Connected -= Сlient_Connected;
-                _clientBinance.UpdatePairs -= _clientBitStamp_UpdatePairs;
-                _clientBinance.Disconnected -= ClientnDisconnected;
-                _clientBinance.NewPortfolio -= NewPortfolios;
-                _clientBinance.UpdatePortfolio -= UpdatePortfolios;
-                _clientBinance.UpdateMarketDepth -= UpdateMarketDepth;
-                _clientBinance.NewTradesEvent -= NewTrades;
-                _clientBinance.MyTradeEvent -= NewMyTrade;
-                _clientBinance.MyOrderEvent -= Binance_UpdateOrder;
-                _clientBinance.LogMessageEvent -= SendLogMessage;
+                _client.Connected -= _client_Connected;
+                _client.UpdatePairs -= _client_UpdatePairs;
+                _client.Disconnected -= _client_Disconnected;
+                _client.NewPortfolio -= _client_NewPortfolio;
+                _client.UpdatePortfolio -= _client_UpdatePortfolio;
+                _client.UpdateMarketDepth -= _client_UpdateMarketDepth;
+                _client.NewTradesEvent -= _client_NewTradesEvent;
+                _client.MyTradeEvent -= _client_MyTradeEvent;
+                _client.MyOrderEvent -= _client_MyOrderEvent;
+                _client.LogMessageEvent -= SendLogMessage;
             }
 
-            _clientBinance = null;
-
-            _candleManager = null;
-
-            _startListeningPortfolios = false;
-
-            _getPortfoliosAndSecurities = false;
+            _client = null;
+            ServerStatus = ServerConnectStatus.Disconnect;
         }
 
-
-        // работа потока рассылки !!!!!
-
-        #region MyRegion
-
         /// <summary>
-        /// очередь новых ордеров
+        /// connect to API
+        /// подсоединиться к апи
         /// </summary>
-        private ConcurrentQueue<Order> _ordersToSend;
-
-        /// <summary>
-        /// очередь тиков
-        /// </summary>
-        private ConcurrentQueue<List<Trade>> _tradesToSend;
-
-        /// <summary>
-        /// очередь новых портфелей
-        /// </summary>
-        private ConcurrentQueue<List<Portfolio>> _portfolioToSend;
-
-        /// <summary>
-        /// очередь новых инструментов
-        /// </summary>
-        private ConcurrentQueue<List<Security>> _securitiesToSend;
-
-        /// <summary>
-        /// очередь новых моих сделок
-        /// </summary>
-        private ConcurrentQueue<MyTrade> _myTradesToSend;
-
-        /// <summary>
-        /// очередь нового времени
-        /// </summary>
-        private ConcurrentQueue<DateTime> _newServerTime;
-
-        /// <summary>
-        /// очередь обновлённых серий свечек
-        /// </summary>
-        private ConcurrentQueue<CandleSeries> _candleSeriesToSend;
-
-        /// <summary>
-        /// очередь новых стаканов
-        /// </summary>
-        private ConcurrentQueue<MarketDepth> _marketDepthsToSend;
-
-        /// <summary>
-        /// очередь обновлений бида с аска по инструментам 
-        /// </summary>
-        private ConcurrentQueue<BidAskSender> _bidAskToSend;
-
-        /// <summary>
-        /// место работы потока рассылки
-        /// </summary>
-        private void SenderThreadArea()
+        public void Connect()
         {
-            while (true)
+            if (_client == null)
             {
-                try
+                _client = new BinanceClient(((ServerParameterString)ServerParameters[0]).Value, ((ServerParameterPassword)ServerParameters[1]).Value);
+                _client.Connected += _client_Connected;
+                _client.UpdatePairs += _client_UpdatePairs;
+                _client.Disconnected += _client_Disconnected;
+                _client.NewPortfolio += _client_NewPortfolio;
+                _client.UpdatePortfolio += _client_UpdatePortfolio;
+                _client.UpdateMarketDepth += _client_UpdateMarketDepth;
+                _client.NewTradesEvent += _client_NewTradesEvent;
+                _client.MyTradeEvent += _client_MyTradeEvent;
+                _client.MyOrderEvent += _client_MyOrderEvent;
+                _client.LogMessageEvent += SendLogMessage;
+            }
+
+            _client.Connect();
+        }
+
+        /// <summary>
+        /// request securities
+        /// запросить бумаги
+        /// </summary>
+        public void GetSecurities()
+        {
+            _client.GetSecurities();
+        }
+
+        /// <summary>
+        /// request portfolios
+        /// запросить портфели
+        /// </summary>
+        public void GetPortfolios()
+        {
+            _client.GetBalance();
+        }
+
+        /// <summary>
+        /// send order
+        /// исполнить ордер
+        /// </summary>
+        public void SendOrder(Order order)
+        {
+            _client.ExecuteOrder(order);
+        }
+
+        /// <summary>
+        /// cancel order
+        /// отозвать ордер
+        /// </summary>
+        public void CanselOrder(Order order)
+        {
+            _client.CanselOrder(order);
+        }
+
+        /// <summary>
+        /// subscribe
+        /// подписаться 
+        /// </summary>
+        public void Subscrible(Security security)
+        {
+            _client.SubscribleTradesAndDepths(security);
+        }
+
+        /// <summary>
+        /// take candle history for period
+        /// взять историю свечек за период
+        /// </summary>
+        public List<Candle> GetCandleDataToSecurity(Security security, TimeFrameBuilder timeFrameBuilder,
+            DateTime startTime, DateTime endTime, DateTime actualTime)
+        {
+            List<Candle> candles = new List<Candle>();
+
+            actualTime = startTime;
+
+            while (actualTime < endTime)
+            {
+                List<Candle> newCandles = _client.GetCandlesForTimes(security.Name, 
+                    timeFrameBuilder.TimeFrameTimeSpan,
+                    actualTime, endTime);
+
+                if (candles.Count != 0 && newCandles.Count != 0)
                 {
-                    if (!_ordersToSend.IsEmpty)
+                    for (int i = 0; i < newCandles.Count; i++)
                     {
-                        Order order;
-                        if (_ordersToSend.TryDequeue(out order))
+                        if (candles[candles.Count - 1].TimeStart >= newCandles[i].TimeStart)
                         {
-                            if (NewOrderIncomeEvent != null)
-                            {
-                                NewOrderIncomeEvent(order);
-                            }
+                            newCandles.RemoveAt(i);
+                            i--;
                         }
-                    }
-                    else if (!_myTradesToSend.IsEmpty &&
-                             (_ordersToSend.IsEmpty))
-                    {
-                        MyTrade myTrade;
 
-                        if (_myTradesToSend.TryDequeue(out myTrade))
-                        {
-                            if (NewMyTradeEvent != null)
-                            {
-                                NewMyTradeEvent(myTrade);
-                            }
-                        }
-                    }
-                    else if (!_tradesToSend.IsEmpty)
-                    {
-                        List<Trade> trades;
-
-                        if (_tradesToSend.TryDequeue(out trades))
-                        {
-                            if (NewTradeEvent != null)
-                            {
-                                NewTradeEvent(trades);
-                            }
-                        }
-                    }
-
-                    else if (!_portfolioToSend.IsEmpty)
-                    {
-                        List<Portfolio> portfolio;
-
-                        if (_portfolioToSend.TryDequeue(out portfolio))
-                        {
-                            if (PortfoliosChangeEvent != null)
-                            {
-                                PortfoliosChangeEvent(portfolio);
-                            }
-                        }
-                    }
-
-                    else if (!_securitiesToSend.IsEmpty)
-                    {
-                        List<Security> security;
-
-                        if (_securitiesToSend.TryDequeue(out security))
-                        {
-                            if (SecuritiesChangeEvent != null)
-                            {
-                                SecuritiesChangeEvent(security);
-                            }
-                        }
-                    }
-                    else if (!_newServerTime.IsEmpty)
-                    {
-                        DateTime time;
-
-                        if (_newServerTime.TryDequeue(out time))
-                        {
-                            if (TimeServerChangeEvent != null)
-                            {
-                                TimeServerChangeEvent(_serverTime);
-                            }
-                        }
-                    }
-
-                    else if (!_candleSeriesToSend.IsEmpty)
-                    {
-                        CandleSeries series;
-
-                        if (_candleSeriesToSend.TryDequeue(out series))
-                        {
-                            if (NewCandleIncomeEvent != null)
-                            {
-                                NewCandleIncomeEvent(series);
-                            }
-                        }
-                    }
-
-                    else if (!_marketDepthsToSend.IsEmpty)
-                    {
-                        MarketDepth depth;
-
-                        if (_marketDepthsToSend.TryDequeue(out depth))
-                        {
-                            if (NewMarketDepthEvent != null)
-                            {
-                                NewMarketDepthEvent(depth);
-                            }
-                        }
-                    }
-
-                    else if (!_bidAskToSend.IsEmpty)
-                    {
-                        BidAskSender bidAsk;
-
-                        if (_bidAskToSend.TryDequeue(out bidAsk))
-                        {
-                            if (NewBidAscIncomeEvent != null)
-                            {
-                                NewBidAscIncomeEvent(bidAsk.Bid, bidAsk.Ask, bidAsk.Security);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        Thread.Sleep(1);
                     }
                 }
-                catch (Exception error)
+
+                if (newCandles.Count == 0)
                 {
-                    SendLogMessage(error.ToString(), LogMessageType.Error);
+                    return candles;
                 }
+
+                candles.AddRange(newCandles);
+
+                actualTime = candles[candles.Count - 1].TimeStart;
+            }
+
+            if (candles.Count == 0)
+            {
+                return null;
+            }
+
+            return candles;
+        }
+
+        /// <summary>
+        /// take ticks data on instrument for period
+        /// взять тиковые данные по инструменту за период
+        /// </summary>
+        public List<Trade> GetTickDataToSecurity(Security security, DateTime startTime, DateTime endTime, DateTime lastDate)
+        {
+            List<Trade> lastTrades = new List<Trade>();
+
+            string tradeId = "";
+
+            DateTime lastTradeTime = DateTime.MaxValue;
+
+            while (lastTradeTime > startTime)
+            {
+                lastDate = TimeZoneInfo.ConvertTimeToUtc(lastDate);
+
+                List<Trade> trades = _client.GetTickHistoryToSecurity(security, tradeId);
+
+                if (trades == null ||
+                    trades.Count == 0)
+                {
+                    lastTradeTime = lastDate.AddSeconds(-1);
+                    Thread.Sleep(2000);
+                    continue;
+                }
+
+                DateTime uniTime = trades[trades.Count - 1].Time.ToUniversalTime();
+
+                lastTradeTime = trades[0].Time;
+
+                for (int i2 = 0; i2 < trades.Count; i2++)
+                {
+                    lastTrades.Insert(i2, trades[i2]);
+                }
+
+                tradeId = (Convert.ToInt32(trades[0].Id) - 1000).ToString();
+
+                Thread.Sleep(100);
+            }
+
+            return lastTrades;
+        }
+
+        /// <summary>
+        /// request order state
+        /// запросить статус ордеров
+        /// </summary>
+        public void GetOrdersState(List<Order> orders)
+        {
+            _client.GetAllOrders(orders);
+        }
+
+        /// <summary>
+        /// server status
+        /// статус серверов
+        /// </summary>
+        public ServerConnectStatus ServerStatus { get; set; }
+
+        /// <summary>
+        /// request instrument history
+        /// запрос истории по инструменту
+        /// </summary>
+        public List<Candle> GetCandleHistory(string nameSec, TimeSpan tf)
+        {
+            return _client.GetCandles(nameSec, tf);
+        }
+
+//parsing incoming data
+// разбор входящих данных
+
+        void _client_MyOrderEvent(Order order)
+        {
+            if (MyOrderEvent != null)
+            {
+                MyOrderEvent(order);
             }
         }
 
-        #endregion
-
-
-        // время сервера
-
-        private DateTime _serverTime;
+        void _client_MyTradeEvent(MyTrade myTrade)
+        {
+            if (MyTradeEvent != null)
+            {
+                MyTradeEvent(myTrade);
+            }
+        }
 
         /// <summary>
-        /// время сервера
+        /// multi-threaded access locker to ticks
+        /// блокиратор многопоточного доступа к тикам
         /// </summary>
-        public DateTime ServerTime
-        {
-            get { return _serverTime; }
+        private readonly object _newTradesLoker = new object();
 
-            private set
+        void _client_NewTradesEvent(BinanceEntity.TradeResponse trades)
+        {
+            lock (_newTradesLoker)
             {
-                if (value < _serverTime)
+                if (trades.data == null)
                 {
                     return;
                 }
+                Trade trade = new Trade();
+                trade.SecurityNameCode = trades.data.s;
+                trade.Price =
+                        trades.data.p.ToDecimal();
+                trade.Id = trades.data.t.ToString();
+                trade.Time = new DateTime(1970, 1, 1).AddMilliseconds(Convert.ToDouble(trades.data.T));
+                trade.Volume =
+                        trades.data.q.ToDecimal();
+                trade.Side = trades.data.m == true ? Side.Sell : Side.Buy;
 
-                DateTime lastTime = _serverTime;
-                _serverTime = value;
-
-                if (_serverTime != lastTime)
+                if (NewTradesEvent != null)
                 {
-                    _newServerTime.Enqueue(_serverTime);
+                    NewTradesEvent(trade);
                 }
             }
         }
 
         /// <summary>
-        /// изменилось время сервера
+        /// all depths
+        /// все стаканы
         /// </summary>
-        public event Action<DateTime> TimeServerChangeEvent;
+        private List<MarketDepth> _depths;
 
-        // портфели
+        private readonly object _depthLocker = new object();
+
+        void _client_UpdateMarketDepth(BinanceEntity.DepthResponse myDepth)
+        {
+            try
+            {
+                lock (_depthLocker)
+                {
+                    if (_depths == null)
+                    {
+                        _depths = new List<MarketDepth>();
+                    }
+
+                    if (myDepth.data.asks == null || myDepth.data.asks.Count == 0 ||
+                        myDepth.data.bids == null || myDepth.data.bids.Count == 0)
+                    {
+                        return;
+                    }
+
+                    var needDepth = _depths.Find(depth =>
+                        depth.SecurityNameCode == myDepth.stream.Split('@')[0].ToUpper());
+
+                    if (needDepth == null)
+                    {
+                        needDepth = new MarketDepth();
+                        needDepth.SecurityNameCode = myDepth.stream.Split('@')[0].ToUpper();
+                        _depths.Add(needDepth);
+                    }
+
+                    List<MarketDepthLevel> ascs = new List<MarketDepthLevel>();
+                    List<MarketDepthLevel> bids = new List<MarketDepthLevel>();
+
+                    for (int i = 0; i < myDepth.data.asks.Count; i++)
+                    {
+                        ascs.Add(new MarketDepthLevel()
+                        {
+                            Ask = 
+                                myDepth.data.asks[i][1].ToString().ToDecimal()
+                            ,
+                            Price =
+                                myDepth.data.asks[i][0].ToString().ToDecimal()
+                                    
+                        });
+                    }
+
+                    for (int i = 0; i < myDepth.data.bids.Count; i++)
+                    {
+                        bids.Add(new MarketDepthLevel()
+                        {
+                            Bid = 
+                                myDepth.data.bids[i][1].ToString().ToDecimal()
+                            ,
+                            Price = 
+                                myDepth.data.bids[i][0].ToString().ToDecimal()
+                        });
+                    }
+
+                    needDepth.Asks = ascs;
+                    needDepth.Bids = bids;
+                    needDepth.Time = ServerTime;
+
+                    if (needDepth.Time == DateTime.MinValue)
+                    {
+                        return;
+                    }
+
+                    if (MarketDepthEvent != null)
+                    {
+                        MarketDepthEvent(needDepth.GetCopy());
+                    }
+                }
+            }
+            catch (Exception error)
+            {
+                SendLogMessage(error.ToString(), LogMessageType.Error);
+            }
+        }
 
         private List<Portfolio> _portfolios;
 
-        /// <summary>
-        /// все счета в системе
-        /// </summary>
-        public List<Portfolio> Portfolios
-        {
-            get { return _portfolios; }
-        }
-
-        /// <summary>
-        /// взять портфель по номеру
-        /// </summary>
-        public Portfolio GetPortfolioForName(string name)
-        {
-            try
-            {
-                if (_portfolios == null)
-                {
-                    return null;
-                }
-                return _portfolios.Find(portfolio => portfolio.Number == name);
-            }
-            catch (Exception error)
-            {
-                SendLogMessage(error.ToString(), LogMessageType.Error);
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// пришли новые портфелиь
-        /// </summary>
-        private void NewPortfolios(AccountResponse portfs)
-        {
-            try
-            {
-                if (portfs == null)
-                {
-                    return;
-                }
-
-                if (_portfolios == null)
-                {
-                    _portfolios = new List<Portfolio>();
-                }
-
-                if (portfs.balances == null)
-                {
-                    return;
-                }
-
-                foreach (var onePortf in portfs.balances)
-                {
-                    Portfolio newPortf = new Portfolio();
-                    newPortf.Number = onePortf.asset;
-                    newPortf.ValueCurrent = Convert.ToDecimal(onePortf.free.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
-                    newPortf.ValueBlocked = Convert.ToDecimal(onePortf.locked.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
-
-                    _portfolios.Add(newPortf);
-                }
-
-                _portfolioToSend.Enqueue(_portfolios);
-            }
-            catch (Exception error)
-            {
-                SendLogMessage(error.ToString(), LogMessageType.Error);
-            }
-        }
-
-        /// <summary>
-        /// обновились портфели
-        /// </summary>
-        private void UpdatePortfolios(OutboundAccountInfo portfs)
+        void _client_UpdatePortfolio(BinanceEntity.OutboundAccountInfo portfs)
         {
             try
             {
@@ -797,11 +444,16 @@ namespace OsEngine.Market.Servers.Binance
                         continue;
                     }
 
-                    neeedPortf.ValueCurrent = Convert.ToDecimal(onePortf.f.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
-                    neeedPortf.ValueBlocked = Convert.ToDecimal(onePortf.l.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
+                    neeedPortf.ValueCurrent = 
+                        onePortf.f.ToDecimal();
+                    neeedPortf.ValueBlocked = 
+                        onePortf.l.ToDecimal();
                 }
 
-                _portfolioToSend.Enqueue(_portfolios);
+                if (PortfolioEvent != null)
+                {
+                    PortfolioEvent(_portfolios);
+                }
             }
             catch (Exception error)
             {
@@ -809,39 +461,41 @@ namespace OsEngine.Market.Servers.Binance
             }
         }
 
-
-        // инструменты
-
-        private List<Security> _securities;
-
-        /// <summary>
-        /// все инструменты в системе
-        /// </summary>
-        public List<Security> Securities
-        {
-            get { return _securities; }
-        }
-
-        /// <summary>
-        /// взять инструмент в виде класса Security, по имени инструмента 
-        /// </summary>
-        public Security GetSecurityForName(string name)
-        {
-            if (_securities == null)
-            {
-                return null;
-            }
-            return _securities.Find(securiti => securiti.Name == name);
-        }
-
-        /// <summary>
-        /// получить инструменты
-        /// </summary>
-        private void GetSecurities()
+        void _client_NewPortfolio(BinanceEntity.AccountResponse portfs)
         {
             try
             {
-                _clientBinance.GetSecurities();
+                if (portfs == null)
+                {
+                    return;
+                }
+
+                if (_portfolios == null)
+                {
+                    _portfolios = new List<Portfolio>();
+                }
+
+                if (portfs.balances == null)
+                {
+                    return;
+                }
+
+                foreach (var onePortf in portfs.balances)
+                {
+                    Portfolio newPortf = new Portfolio();
+                    newPortf.Number = onePortf.asset;
+                    newPortf.ValueCurrent = 
+                        onePortf.free.ToDecimal();
+                    newPortf.ValueBlocked = 
+                        onePortf.locked.ToDecimal();
+
+                    _portfolios.Add(newPortf);
+                }
+
+                if (PortfolioEvent != null)
+                {
+                    PortfolioEvent(_portfolios);
+                }
             }
             catch (Exception error)
             {
@@ -849,11 +503,18 @@ namespace OsEngine.Market.Servers.Binance
             }
         }
 
+        void _client_Disconnected()
+        {
+            if (DisconnectEvent != null)
+            {
+                DisconnectEvent();
+            }
+            ServerStatus = ServerConnectStatus.Disconnect;
+        }
 
-        /// <summary>
-        /// обновился список бумаг
-        /// </summary>
-        void _clientBitStamp_UpdatePairs(SecurityResponce pairs)
+        private List<Security> _securities;
+
+        void _client_UpdatePairs(BinanceEntity.SecurityResponce pairs)
         {
             if (_securities == null)
             {
@@ -866,15 +527,20 @@ namespace OsEngine.Market.Servers.Binance
                 security.Name = sec.symbol;
                 security.NameFull = sec.symbol;
                 security.NameClass = sec.quoteAsset;
+                security.NameId = sec.symbol + sec.quoteAsset;
+                security.SecurityType = SecurityType.CurrencyPair;
                 // sec.filters[1] - минимальный объем равный цена * объем
-                security.Lot = Convert.ToDecimal(sec.filters[1].stepSize.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
-                security.PriceStep = Convert.ToDecimal(sec.filters[0].tickSize.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
-                security.PriceLimitLow = Convert.ToDecimal(sec.filters[0].minPrice.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
-                security.PriceLimitHigh = Convert.ToDecimal(sec.filters[0].maxPrice.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
+                security.Lot = sec.filters[2].stepSize.ToDecimal();
+                security.PriceStep = sec.filters[0].tickSize.ToDecimal();
+                security.PriceStepCost = security.PriceStep;
+               
+                security.PriceLimitLow = sec.filters[0].minPrice.ToDecimal();
+                security.PriceLimitHigh = sec.filters[0].maxPrice.ToDecimal();
 
                 if (security.PriceStep < 1)
                 {
-                    security.Decimals = Convert.ToString(security.PriceStep).Split(',')[1].Split('1')[0].Length + 1;
+                    string prStep = security.PriceStep.ToString(CultureInfo.InvariantCulture);
+                    security.Decimals = Convert.ToString(prStep).Split('.')[1].Split('1')[0].Length + 1;
                 }
                 else
                 {
@@ -882,540 +548,80 @@ namespace OsEngine.Market.Servers.Binance
                 }
 
                 security.State = SecurityStateType.Activ;
-
                 _securities.Add(security);
-
             }
 
-            _securitiesToSend.Enqueue(_securities);
-        }
-
-        /// <summary>
-        /// изменились инструменты
-        /// </summary>
-        public event Action<List<Security>> SecuritiesChangeEvent;
-
-        /// <summary>
-        /// показать бумаги
-        /// </summary>
-        public void ShowSecuritiesDialog()
-        {
-            SecuritiesUi ui = new SecuritiesUi(this);
-            ui.ShowDialog();
-        }
-
-
-        // стакан
-
-        /// <summary>
-        /// все стаканы
-        /// </summary>
-        private List<MarketDepth> _depths;
-
-        private readonly object _depthLocker = new object();
-        /// <summary>
-        /// пришел обновленный стакан
-        /// </summary>        
-        private void UpdateMarketDepth(DepthResponse myDepth)
-        {
-            try
+            if (SecurityEvent != null)
             {
-                lock (_depthLocker)
-                {
-                    if (_depths == null)
-                    {
-                        _depths = new List<MarketDepth>();
-                    }
-
-                    var needDepth = _depths.Find(depth =>
-                        depth.SecurityNameCode == myDepth.stream.Split('@')[0].ToUpper());
-
-                    if (needDepth == null)
-                    {
-                        needDepth = new MarketDepth();
-                        needDepth.SecurityNameCode = myDepth.stream.Split('@')[0].ToUpper();
-                        _depths.Add(needDepth);
-                    }
-
-                    List<MarketDepthLevel> ascs = new List<MarketDepthLevel>();
-                    List<MarketDepthLevel> bids = new List<MarketDepthLevel>();
-
-                    for (int i = 0; i < myDepth.data.asks.Count; i++)
-                    {
-                        ascs.Add(new MarketDepthLevel()
-                        {
-                            Ask = Convert.ToDecimal(
-                                myDepth.data.asks[i][1].ToString().Replace(".",
-                                    CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator),
-                                CultureInfo.InvariantCulture),
-                            Price = Convert.ToDecimal(
-                                myDepth.data.asks[i][0].ToString().Replace(".",
-                                    CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator),
-                                CultureInfo.InvariantCulture)
-                        });
-
-                        bids.Add(new MarketDepthLevel()
-                        {
-                            Bid = Convert.ToDecimal(
-                                myDepth.data.bids[i][1].ToString().Replace(".",
-                                    CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator),
-                                CultureInfo.InvariantCulture),
-                            Price = Convert.ToDecimal(
-                                myDepth.data.bids[i][0].ToString().Replace(".",
-                                    CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator),
-                                CultureInfo.InvariantCulture),
-                        });
-                    }
-
-                    needDepth.Asks = ascs;
-                    needDepth.Bids = bids;
-                    needDepth.Time = ServerTime;
-
-                    if (NewMarketDepthEvent != null)
-                    {
-                        _marketDepthsToSend.Enqueue(needDepth.GetCopy());
-
-                        if (needDepth.Asks.Count != 0 && needDepth.Bids.Count != 0)
-                        {
-                            _bidAskToSend.Enqueue(new BidAskSender
-                            {
-                                Ask = needDepth.Bids[0].Price,
-                                Bid = needDepth.Asks[0].Price,
-                                Security = myDepth.stream.Split('@')[0] != null
-                                    ? GetSecurityForName(myDepth.stream.Split('@')[0].ToUpper())
-                                    : null
-                            });
-                        }
-                    }
-                }
+                SecurityEvent(_securities);
             }
-            catch (Exception error)
+        }
+
+        void _client_Connected()
+        {
+            if(ConnectEvent != null)
             {
-                SendLogMessage(error.ToString(), LogMessageType.Error);
+                ConnectEvent();
             }
+            ServerStatus = ServerConnectStatus.Connect;
         }
 
+// outgoing messages
+// исходящие события
+
         /// <summary>
-        /// изменился лучший бид / аск по инструменту
+        /// called when order changed
+        /// вызывается когда изменился ордер
         /// </summary>
-        public event Action<decimal, decimal, Security> NewBidAscIncomeEvent;
+        public event Action<Order> MyOrderEvent;
 
         /// <summary>
-        /// новый стакан в системе
+        /// called when my trade changed
+        /// вызывается когда изменился мой трейд
         /// </summary>
-        public event Action<MarketDepth> NewMarketDepthEvent;
-
-
-        // тики
+        public event Action<MyTrade> MyTradeEvent;
 
         /// <summary>
-        /// хранилище тиков
+        /// new portfolios appeared
+        /// появились новые портфели
         /// </summary>
-        private ServerTickStorage _tickStorage;
+        public event Action<List<Portfolio>> PortfolioEvent;
 
         /// <summary>
-        /// хранилище тиков
+        /// new securities
+        /// новые бумаги
         /// </summary>
-        /// <param name="trades"></param>
-        void _tickStorage_TickLoadedEvent(List<Trade>[] trades)
-        {
-            _allTrades = trades;
-        }
+        public event Action<List<Security>> SecurityEvent;
 
         /// <summary>
-        /// все тики
+        /// new depth
+        /// новый стакан
         /// </summary>
-        private List<Trade>[] _allTrades;
+        public event Action<MarketDepth> MarketDepthEvent;
 
         /// <summary>
-        /// взять историю тиков по инструменту
+        /// new trade
+        /// новый трейд
         /// </summary>
-        /// <param name="security"> инстурмент</param>
-        /// <returns>сделки</returns>
-        public List<Trade> GetAllTradesToSecurity(Security security)
-        {
-            try
-            {
-                if (_allTrades == null)
-                {
-                    return null;
-                }
-
-                List<Trade> trades = new List<Trade>();
-
-                for (int i = 0; i < _allTrades.Length; i++)
-                {
-                    if (_allTrades[i] != null && _allTrades[i].Count != 0 &&
-                        _allTrades[i][0].SecurityNameCode == security.Name)
-                    {
-                        return _allTrades[i];
-                    }
-                }
-
-                return trades;
-            }
-            catch (Exception error)
-            {
-                SendLogMessage(error.ToString(), LogMessageType.Error);
-                return null;
-            }
-        }
+        public event Action<Trade> NewTradesEvent;
 
         /// <summary>
-        /// все тики имеющиеся у сервера
+        /// API connection established
+        /// соединение с API установлено
         /// </summary>
-        public List<Trade>[] AllTrades { get { return _allTrades; } }
+        public event Action ConnectEvent;
 
         /// <summary>
-        /// блокиратор многопоточного доступа к тикам
+        /// API connection lost
+        /// соединение с API разорвано
         /// </summary>
-        private readonly object _newTradesLoker = new object();
+        public event Action DisconnectEvent;
+
+// log messages
+// сообщения для лога
 
         /// <summary>
-        /// пришли новые тики
-        /// </summary>
-        /// <param name="trades"></param>
-        private void NewTrades(TradeResponse trades)
-        {
-            try
-            {
-                lock (_newTradesLoker)
-                {
-                    if (trades.data == null)
-                    {
-                        return;
-                    }
-                    Trade trade = new Trade();
-                    trade.SecurityNameCode = trades.data.s;
-                    trade.Price = Convert.ToDecimal(trades.data.p.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
-                    trade.Id = trades.data.t.ToString();
-                    trade.Time = new DateTime(1970, 1, 1).AddMilliseconds(Convert.ToDouble(trades.data.T));
-                    trade.Volume = Convert.ToDecimal(trades.data.q.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
-                    trade.Side = trades.data.m == true ? Side.Sell : Side.Buy;
-
-                    // сохраняем
-                    if (_allTrades == null)
-                    {
-                        _allTrades = new List<Trade>[1];
-                        _allTrades[0] = new List<Trade> { trade };
-                    }
-
-                    else
-                    {
-                        // сортируем сделки по хранилищам
-                        List<Trade> myList = null;
-                        bool isSave = false;
-                        for (int i = 0; i < _allTrades.Length; i++)
-                        {
-                            if (_allTrades[i] != null && _allTrades[i].Count != 0 &&
-                                _allTrades[i][0].SecurityNameCode == trade.SecurityNameCode)
-                            {
-                                // если для этого инструметна уже есть хранилище, сохраняем и всё
-                                if (trade.Time < _allTrades[i][_allTrades[i].Count - 1].Time)
-                                {
-                                    return;
-                                }
-
-                                _allTrades[i].Add(trade);
-                                myList = _allTrades[i];
-                                isSave = true;
-                                break;
-                            }
-                        }
-
-                        if (isSave == false)
-                        {
-                            // хранилища для инструмента нет
-                            List<Trade>[] allTradesNew = new List<Trade>[_allTrades.Length + 1];
-                            for (int i = 0; i < _allTrades.Length; i++)
-                            {
-                                allTradesNew[i] = _allTrades[i];
-                            }
-                            allTradesNew[allTradesNew.Length - 1] = new List<Trade>();
-                            allTradesNew[allTradesNew.Length - 1].Add(trade);
-                            myList = allTradesNew[allTradesNew.Length - 1];
-                            _allTrades = allTradesNew;
-                        }
-
-                        _tradesToSend.Enqueue(myList);
-                    }
-
-                    // перегружаем последним временем тика время сервера
-                    ServerTime = trade.Time;
-                }
-            }
-            catch (Exception error)
-            {
-                SendLogMessage(error.ToString(), LogMessageType.Error);
-            }
-
-        }
-
-        /// <summary>
-        /// новый тик
-        /// </summary>
-        public event Action<List<Trade>> NewTradeEvent;
-
-
-        // Подпись на данные
-
-        /// <summary>
-        /// мастер загрузки свечек
-        /// </summary>
-        private CandleManager _candleManager;
-
-        /// <summary>
-        /// объект блокирующий многопоточный доступ в StartThisSecurity
-        /// </summary>
-        private object _lockerStarter = new object();
-
-        /// <summary>
-        /// начать выкачивать данный иснтрументн
-        /// </summary>
-        /// <param name="namePaper"> название инструмента</param>
-        /// <param name="timeFrameBuilder">объект несущий в себе данные о ТаймФрейме нужном для серии</param>
-        /// <returns>в случае успешного запуска возвращает CandleSeries, объект генерирующий свечи</returns>
-        public CandleSeries StartThisSecurity(string namePaper, TimeFrameBuilder timeFrameBuilder)
-        {
-            try
-            {
-                if (_startListeningPortfolios == false)
-                {
-                    return null;
-                }
-
-                lock (_lockerStarter)
-                {
-                    if (namePaper == "")
-                    {
-                        return null;
-                    }
-                    // надо запустить сервер если он ещё отключен
-                    if (ServerStatus != ServerConnectStatus.Connect)
-                    {
-                        //MessageBox.Show("Сервер не запущен. Скачивание данных прервано. Инструмент: " + namePaper);
-                        return null;
-                    }
-
-                    if (_securities == null || _portfolios == null)
-                    {
-                        Thread.Sleep(5000);
-                        return null;
-                    }
-
-                    if (_lastStartServerTime != DateTime.MinValue &&
-                        _lastStartServerTime.AddSeconds(15) > DateTime.Now)
-                    {
-                        return null;
-                    }
-
-                    Security security = null;
-
-                    for (int i = 0; _securities != null && i < _securities.Count; i++)
-                    {
-                        if (_securities[i].Name == namePaper)
-                        {
-                            security = _securities[i];
-                            break;
-                        }
-                    }
-
-                    if (security == null)
-                    {
-                        return null;
-                    }
-
-                    CandleSeries series = new CandleSeries(timeFrameBuilder, security);
-
-                    _clientBinance.SubscribleTradesAndDepths(security);
-
-                    Thread.Sleep(300);
-
-                    _candleManager.StartSeries(series);
-
-                    SendLogMessage("Инструмент " + series.Security.Name + "ТаймФрейм" + series.TimeFrame +
-                                   " успешно подключен на получение данных и прослушивание свечек", LogMessageType.System);
-
-                    if (_tickStorage != null)
-                    {
-                        _tickStorage.SetSecurityToSave(security);
-                    }
-
-                    return series;
-                }
-
-            }
-            catch (Exception error)
-            {
-                SendLogMessage(error.ToString(), LogMessageType.Error);
-                return null;
-            }
-
-        }
-
-        public List<Candle> GetCandleHistory(string nameSec, TimeSpan tf)
-        {
-            return _clientBinance.GetCandles(nameSec, tf);
-        }
-
-
-        /// <summary>
-        /// остановить скачивание свечек
-        /// </summary>
-        /// <param name="series"> серия свечек которую надо остановить</param>
-        public void StopThisSecurity(CandleSeries series)
-        {
-            if (series != null)
-            {
-                _candleManager.StopSeries(series);
-            }
-        }
-
-        /// <summary>
-        /// изменились серии свечек
-        /// </summary>
-        private void _candleManager_CandleUpdateEvent(CandleSeries series)
-        {
-            _candleSeriesToSend.Enqueue(series);
-        }
-
-        /// <summary>
-        /// необходимо перезаказать данные у сервера
-        /// </summary>
-        public event Action NeadToReconnectEvent;
-
-        /// <summary>
-        /// новые свечи
-        /// </summary>
-        public event Action<CandleSeries> NewCandleIncomeEvent;
-
-
-        // новая моя сделка
-
-        private List<MyTrade> _myTrades;
-
-        /// <summary>
-        /// мои сделки
-        /// </summary>
-        public List<MyTrade> MyTrades
-        {
-            get { return _myTrades; }
-        }
-
-        /// <summary>
-        /// входящие из системы мои сделки
-        /// </summary>
-        private void NewMyTrade(MyTrade trade)
-        {
-            _myTradesToSend.Enqueue(trade);
-
-            if (_myTrades == null)
-            {
-                _myTrades = new List<MyTrade>();
-            }
-
-            _myTrades.Add(trade);
-        }
-
-        /// <summary>
-        /// изменилась моя сделка
-        /// </summary>
-        public event Action<MyTrade> NewMyTradeEvent;
-
-
-        // работа с ордерами
-
-        /// <summary>
-        /// место работы потока на очередях исполнения заявок и их отмены
-        /// </summary>
-        private void ExecutorOrdersThreadArea()
-        {
-            while (true)
-            {
-                try
-                {
-                    Thread.Sleep(20);
-                    if (_ordersToExecute != null && _ordersToExecute.Count != 0)
-                    {
-                        Order order;
-                        if (_ordersToExecute.TryDequeue(out order))
-                        {
-                            _clientBinance.ExecuteOrder(order);
-                        }
-                    }
-                    else if (_ordersToCansel != null && _ordersToCansel.Count != 0)
-                    {
-                        Order order;
-                        if (_ordersToCansel.TryDequeue(out order))
-                        {
-                            _clientBinance.CanselOrder(order);
-                        }
-                    }
-                }
-                catch (Exception error)
-                {
-                    SendLogMessage(error.ToString(), LogMessageType.Error);
-                }
-            }
-        }
-
-        /// <summary>
-        /// очередь ордеров для выставления в систему
-        /// </summary>
-        private ConcurrentQueue<Order> _ordersToExecute;
-
-        /// <summary>
-        /// очередь ордеров для отмены в системе
-        /// </summary>
-        private ConcurrentQueue<Order> _ordersToCansel;
-
-        public ServerType ServerType { get; set; }
-
-
-        public event Action<List<Portfolio>> PortfoliosChangeEvent;
-
-        /// <summary>
-        /// входящий из системы ордер
-        /// </summary>
-        private void Binance_UpdateOrder(Order myOrder)
-        {
-            if (_portfolios != null)
-            {
-                var needP = _portfolios.Find(p => myOrder.SecurityNameCode.Contains(p.Number));
-                if (needP != null)
-                {
-                    myOrder.PortfolioNumber = needP.Number;
-                }               
-            }
-
-            _ordersToSend.Enqueue(myOrder);
-        }
-
-        /// <summary>
-        /// выслать ордер на исполнение в торговую систему
-        /// </summary>
-        /// <param name="order">ордер</param>
-        public void ExecuteOrder(Order order)
-        {
-            order.TimeCreate = ServerTime;
-            _ordersToExecute.Enqueue(order);
-        }
-
-        /// <summary>
-        /// отозвать ордер из торговой системы
-        /// </summary>
-        /// <param name="order">ордер</param>
-        public void CanselOrder(Order order)
-        {
-            _ordersToCansel.Enqueue(order);
-        }
-
-        public event Action<Order> NewOrderIncomeEvent;
-
-
-        // сообщения для лога
-
-        /// <summary>
+        /// add a new log message
         /// добавить в лог новое сообщение
         /// </summary>
         private void SendLogMessage(string message, LogMessageType type)
@@ -1427,14 +633,9 @@ namespace OsEngine.Market.Servers.Binance
         }
 
         /// <summary>
-        /// менеджер лога
-        /// </summary>
-        private Log _logMaster;
-
-        /// <summary>
+        /// outgoing log message
         /// исходящее сообщение для лога
         /// </summary>
         public event Action<string, LogMessageType> LogMessageEvent;
     }
-
 }

@@ -1,4 +1,8 @@
-﻿using System;
+﻿/*
+ * Your rights to use code governed by this license http://o-s-a.net/doc/license_simple_engine.pdf
+ * Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
+*/
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
@@ -6,24 +10,28 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using System.Windows.Forms.Integration;
+using OsEngine.Language;
 using OsEngine.Logging;
 
 namespace OsEngine.Entity
 {
     /// <summary>
+    /// class responsible for drawing the glass and lines bid-ask
     /// класс отвечающий за отрисовку стакана и линий бид-аск
     /// </summary>
     public class MarketDepthPainter
     {
-
-// статическая часть с работой потока прорисовывающего стакан
+        // static part with the work of drawing glass flow
+        // статическая часть с работой потока прорисовывающего стакан
 
         /// <summary>
+        /// thread
         /// поток 
         /// </summary>
         public static Thread Watcher;
 
         /// <summary>
+        /// logs that need to be serviced
         /// логи которые нужно обслуживать
         /// </summary>
         public static List<MarketDepthPainter> MarketDepthsToCheck = new List<MarketDepthPainter>();
@@ -31,6 +39,7 @@ namespace OsEngine.Entity
         private static object _activatorLocker = new object();
 
         /// <summary>
+        /// activate stream to save
         /// активировать поток для сохранения
         /// </summary>
         public static void Activate()
@@ -50,6 +59,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// place of work that keeps logs
         /// место работы потока который сохраняет логи
         /// </summary>
         public static void WatcherHome()
@@ -69,10 +79,11 @@ namespace OsEngine.Entity
                 }
             }
         }
-
-// основной класс
+        // main class
+        // основной класс
 
         /// <summary>
+        /// constructor object drawing glass
         /// конструктор объекта прорисовывающего стакан
         /// </summary>
         public MarketDepthPainter(string botName)
@@ -87,6 +98,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// remove this object from the drawing
         /// удалить данный объект из прорисовки
         /// </summary>
         public void Delete()
@@ -102,56 +114,55 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// the name of the robot that owns the glass
         /// имя робота которому принадлежит стакан
         /// </summary>
         private string _name;
 
         /// <summary>
+        /// glass area
         /// область для размещения стакана
         /// </summary>
         private WindowsFormsHost _hostGlass;
 
         /// <summary>
+        /// glass table
         /// таблица стакана
         /// </summary>
         DataGridView _glassBox;
 
         /// <summary>
+        /// element for drawing the price selected by the user
         /// элемент для отрисовки выбранной пользователем цены
         /// </summary>
         private System.Windows.Controls.TextBox _textBoxLimitPrice;
 
         /// <summary>
+        /// Last price selected by the user
         /// последняя выбранная пользователем цена
         /// </summary>
         private decimal _lastSelectPrice;
 
         /// <summary>
+        /// Load controls into the connector
         /// загрузить контролы в коннектор
         /// </summary>
         public void CreateGlass()
         {
             try
             {
-                _glassBox = new DataGridView();
-                _glassBox.AllowUserToOrderColumns = false;
+                _glassBox = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.FullRowSelect,
+                    DataGridViewAutoSizeRowsMode.None);
                 _glassBox.AllowUserToResizeRows = false;
-                _glassBox.AllowUserToDeleteRows = false;
-                _glassBox.AllowUserToAddRows = false;
-                _glassBox.RowHeadersVisible = false;
-                _glassBox.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-                _glassBox.MultiSelect = false;
+
                 _glassBox.SelectionChanged += _glassBox_SelectionChanged;
 
-                DataGridViewCellStyle style = new DataGridViewCellStyle();
-                style.Alignment = DataGridViewContentAlignment.BottomRight;
-
                 DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
-                cell0.Style = style;
+                cell0.Style = _glassBox.DefaultCellStyle;
 
                 DataGridViewColumn column0 = new DataGridViewColumn();
                 column0.CellTemplate = cell0;
-                column0.HeaderText = @"Сумма";
+                column0.HeaderText = OsLocalization.Entity.ColumnMarketDepth1;
                 column0.ReadOnly = true;
                 column0.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
 
@@ -160,7 +171,7 @@ namespace OsEngine.Entity
                 DataGridViewTextBoxCell cell = new DataGridViewTextBoxCell();
                 DataGridViewColumn column = new DataGridViewColumn();
                 column.CellTemplate = cell;
-                column.HeaderText = @"Объём";
+                column.HeaderText = OsLocalization.Entity.ColumnMarketDepth3;
                 column.ReadOnly = true;
                 column.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
 
@@ -169,7 +180,7 @@ namespace OsEngine.Entity
                 DataGridViewTextBoxCell cell2 = new DataGridViewTextBoxCell();
                 DataGridViewColumn column1 = new DataGridViewColumn();
                 column1.CellTemplate = cell2;
-                column1.HeaderText = @"Цена";
+                column1.HeaderText = OsLocalization.Entity.ColumnMarketDepth2;
                 column1.ReadOnly = true;
                 column1.Width = 90;
 
@@ -179,7 +190,7 @@ namespace OsEngine.Entity
                 DataGridViewTextBoxCell cell3 = new DataGridViewTextBoxCell();
                 DataGridViewColumn column3 = new DataGridViewColumn();
                 column3.CellTemplate = cell3;
-                column3.HeaderText = @"Объём";
+                column3.HeaderText = OsLocalization.Entity.ColumnMarketDepth3;
                 column3.ReadOnly = true;
                 column3.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
 
@@ -187,15 +198,15 @@ namespace OsEngine.Entity
 
                 DataGridViewCellStyle styleRed = new DataGridViewCellStyle();
                 styleRed.Alignment = DataGridViewContentAlignment.MiddleRight;
-                styleRed.ForeColor = Color.Black;
-                styleRed.Font = new Font("Stencil", 4);
+                styleRed.ForeColor = Color.FromArgb(254, 84, 0);
+                styleRed.Font = new Font("Areal", 3);
 
 
                 for (int i = 0; i < 25; i++)
                 {
                     _glassBox.Rows.Add(null, null, null);
-                    _glassBox.Rows[_glassBox.Rows.Count - 1].DefaultCellStyle.BackColor = Color.Gainsboro;
-                    _glassBox.Rows[_glassBox.Rows.Count - 1].DefaultCellStyle.ForeColor = Color.Black;
+                    _glassBox.Rows[_glassBox.Rows.Count - 1].DefaultCellStyle.BackColor = Color.FromArgb(28, 33, 37);
+                    _glassBox.Rows[_glassBox.Rows.Count - 1].DefaultCellStyle.ForeColor = Color.FromArgb(254, 84, 0);
                     _glassBox.Rows[_glassBox.Rows.Count - 1].DefaultCellStyle.Font = new Font("New Times Roman", 10);
                     _glassBox.Rows[_glassBox.Rows.Count - 1].Cells[0].Style = styleRed;
                     _glassBox.Rows[_glassBox.Rows.Count - 1].Cells[1].Style = styleRed;
@@ -203,14 +214,14 @@ namespace OsEngine.Entity
 
                 DataGridViewCellStyle styleBlue = new DataGridViewCellStyle();
                 styleBlue.Alignment = DataGridViewContentAlignment.MiddleRight;
-                styleBlue.ForeColor = Color.DarkOrange;
-                styleBlue.Font = new Font("Stencil", 4);
+                styleBlue.ForeColor = Color.FromArgb(57, 157,54);
+                styleBlue.Font = new Font("Areal", 3);
 
                 for (int i = 0; i < 25; i++)
                 {
                     _glassBox.Rows.Add(null, null, null);
-                    _glassBox.Rows[_glassBox.Rows.Count - 1].DefaultCellStyle.BackColor = Color.Black;
-                    _glassBox.Rows[_glassBox.Rows.Count - 1].DefaultCellStyle.ForeColor = Color.DarkOrange;
+                    //_glassBox.Rows[_glassBox.Rows.Count - 1].DefaultCellStyle.BackColor = Color.Black;
+                    _glassBox.Rows[_glassBox.Rows.Count - 1].DefaultCellStyle.ForeColor = Color.FromArgb(57, 157, 54);
                     _glassBox.Rows[_glassBox.Rows.Count - 1].DefaultCellStyle.Font = new Font("New Times Roman", 10);
                     _glassBox.Rows[_glassBox.Rows.Count - 1].Cells[0].Style = styleBlue;
                     _glassBox.Rows[_glassBox.Rows.Count - 1].Cells[1].Style = styleBlue;
@@ -226,6 +237,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        ///  the text in the limit price field next to the glass has changed
         /// изменился текст в поле лимитной цены рядом со стаканом
         /// </summary>
         void _textBoxLimitPrice_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
@@ -244,7 +256,7 @@ namespace OsEngine.Entity
                     _textBoxLimitPrice.Text = _lastSelectPrice.ToString(new CultureInfo("RU-ru"));
                 }
 
-                _lastSelectPrice = Convert.ToDecimal(_textBoxLimitPrice.Text);
+                _lastSelectPrice = _textBoxLimitPrice.Text.ToDecimal();
             }
             catch (Exception error)
             {
@@ -253,6 +265,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// the user clicks on the glass
         /// пользователь щёлкнул по стакану
         /// </summary>
         void _glassBox_SelectionChanged(object sender, EventArgs e)
@@ -272,7 +285,7 @@ namespace OsEngine.Entity
                     {
                         return;
                     }
-                    price = Convert.ToDecimal(_glassBox.Rows[_glassBox.CurrentCell.RowIndex].Cells[2].Value);
+                    price = _glassBox.Rows[_glassBox.CurrentCell.RowIndex].Cells[2].Value.ToString().ToDecimal();
                 }
                 catch (Exception)
                 {
@@ -296,6 +309,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// to start drawing the connector elements
         /// начать прорисовывать элементы коннектора
         /// </summary>
         public void StartPaint(WindowsFormsHost glass, System.Windows.Controls.TextBox textBoxLimitPrice)
@@ -331,6 +345,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// Stop drawing connector elements
         /// остановить прорисовывание элементов коннектора
         /// </summary>
         public void StopPaint()
@@ -360,10 +375,11 @@ namespace OsEngine.Entity
                 SendNewLogMessage(error.ToString(), LogMessageType.Error);
             }
         }
-
-// работа потока прорисовывающего стаканы
+        // operation of the flow of drawing glasses
+        // работа потока прорисовывающего стаканы
 
         /// <summary>
+        /// draw a glass
         /// прорисовать стакан
         /// </summary>
         private void TryPaintMarketDepth()
@@ -390,16 +406,19 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// penultimate cup
         /// предпоследний стакан
         /// </summary>
         private MarketDepth _lastMarketDepth;
 
         /// <summary>
+        ///  current cup
         /// текущий стакан
         /// </summary>
         private MarketDepth _currentMaretDepth;
 
         /// <summary>
+        /// to send a glass to draw
         /// отправить стакан на прорисовку
         /// </summary>
         public void ProcessMarketDepth(MarketDepth depth)
@@ -408,6 +427,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// draw a glass
         /// прорисовать стакан
         /// </summary>
         private void PaintMarketDepth(MarketDepth depth)
@@ -443,8 +463,8 @@ namespace OsEngine.Entity
                 {
                     if (i < depth.Bids.Count)
                     {
-                        _glassBox.Rows[25 + i].Cells[2].Value = depth.Bids[i].Price;
-                        _glassBox.Rows[25 + i].Cells[3].Value = depth.Bids[i].Bid;
+                        _glassBox.Rows[25 + i].Cells[2].Value = depth.Bids[i].Price.ToString("G29");
+                        _glassBox.Rows[25 + i].Cells[3].Value = depth.Bids[i].Bid.ToString("G29");
                         if (depth.Bids[i].Bid > maxVol)
                         {
                             maxVol = depth.Bids[i].Bid;
@@ -465,8 +485,8 @@ namespace OsEngine.Entity
                 {
                     if (i < depth.Asks.Count)
                     {
-                        _glassBox.Rows[24 - i].Cells[2].Value = depth.Asks[i].Price;
-                        _glassBox.Rows[24 - i].Cells[3].Value = depth.Asks[i].Ask;
+                        _glassBox.Rows[24 - i].Cells[2].Value = depth.Asks[i].Price.ToString("G29");
+                        _glassBox.Rows[24 - i].Cells[3].Value = depth.Asks[i].Ask.ToString("G29");
 
                         if (depth.Asks[i].Ask > maxVol)
                         {
@@ -484,7 +504,7 @@ namespace OsEngine.Entity
                     }
 
                 }
-
+                // volume in sticks for ask
                 // объём в палках для аска
                 for (int i = 0; depth.Bids != null && i < 25 && i < depth.Bids.Count; i++)
                 {
@@ -504,7 +524,7 @@ namespace OsEngine.Entity
                     _glassBox.Rows[25 + i].Cells[1].Value = builder;
 
                 }
-
+                // volume in bid sticks
                 // объём в палках для бида
                 for (int i = 0; depth.Asks != null && i < 25 && i < depth.Asks.Count; i++)
                 {
@@ -517,7 +537,7 @@ namespace OsEngine.Entity
 
                     StringBuilder builder = new StringBuilder(percentFromMax);
 
-                    for (int i2 = 0; i2 < percentFromMax; i2++)
+                    for (int i2 = 0; i2 < percentFromMax ; i2++)
                     {
                         builder.Append('|');
                     }
@@ -535,7 +555,7 @@ namespace OsEngine.Entity
                 {
                     maxSeries = allBid;
                 }
-
+                // volume cumulative for ask
                 // объём комулятивный для аска
                 decimal summ = 0;
                 for (int i = 0; depth.Bids != null && i < 25 && i < depth.Bids.Count; i++)
@@ -558,7 +578,7 @@ namespace OsEngine.Entity
                     _glassBox.Rows[25 + i].Cells[0].Value = builder;
 
                 }
-
+                // volume is cumulative for bids
                 // объём комулятивный для бида
                 summ = 0;
                 for (int i = 0; depth.Asks != null && i < 25 && i < depth.Asks.Count; i++)
@@ -594,6 +614,7 @@ namespace OsEngine.Entity
         private decimal _ask;
 
         /// <summary>
+        /// send Bid with Ask for drawing
         /// отправить Бид с Аском на прорисовку
         /// </summary>
         public void ProcessBidAsk(decimal bid, decimal ask)
@@ -603,6 +624,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// draw the bid with ask in the glass
         /// прорисовать бид с аском в стакане
         /// </summary>
         private void PaintBidAsk(decimal bid, decimal ask)
@@ -621,8 +643,8 @@ namespace OsEngine.Entity
 
                 if (ask != 0 && bid != 0)
                 {
-                    _glassBox.Rows[25].Cells[2].Value = ask;
-                    _glassBox.Rows[24].Cells[2].Value = bid;
+                    _glassBox.Rows[25].Cells[2].Value = bid.ToString("G29");
+                    _glassBox.Rows[24].Cells[2].Value = ask.ToString("G29");
                 }
             }
             catch (Exception error)
@@ -630,10 +652,11 @@ namespace OsEngine.Entity
                 SendNewLogMessage(error.ToString(), LogMessageType.Error);
             }
         }
-
-// сообщения в лог 
+        // messages to log
+        // сообщения в лог 
 
         /// <summary>
+        /// send a new message to the top
         /// выслать новое сообщение на верх
         /// </summary>
         private void SendNewLogMessage(string message, LogMessageType type)
@@ -643,12 +666,15 @@ namespace OsEngine.Entity
                 LogMessageEvent(message, type);
             }
             else if (type == LogMessageType.Error)
-            { // если на нас никто не подписан и в логе ошибка
+            {
+                // if nobody is signed to us and there is an error in the log
+                // если на нас никто не подписан и в логе ошибка
                 System.Windows.MessageBox.Show(message);
             }
         }
 
         /// <summary>
+        /// outgoing message for log
         /// исходящее сообщение для лога
         /// </summary>
         public event Action<string, LogMessageType> LogMessageEvent;

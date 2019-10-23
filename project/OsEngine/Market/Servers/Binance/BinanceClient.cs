@@ -1,9 +1,4 @@
-﻿using Newtonsoft.Json;
-using OsEngine.Entity;
-using OsEngine.Logging;
-using OsEngine.Market.Servers.Binance.BinanceEntity;
-using RestSharp;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
@@ -11,6 +6,11 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using Newtonsoft.Json;
+using OsEngine.Entity;
+using OsEngine.Logging;
+using OsEngine.Market.Servers.Binance.BinanceEntity;
+using RestSharp;
 using WebSocket4Net;
 using TradeResponse = OsEngine.Market.Servers.Binance.BinanceEntity.TradeResponse;
 
@@ -30,6 +30,7 @@ namespace OsEngine.Market.Servers.Binance
         private string _baseUrl = "https://api.binance.com/api";
 
         /// <summary>
+        /// connecto to the exchange
         /// установить соединение с биржей 
         /// </summary>
         public void Connect()
@@ -40,7 +41,7 @@ namespace OsEngine.Market.Servers.Binance
                 return;
             }
 
-            // проверяем доступность сервера для HTTP общения с ним
+            // check server availability for HTTP communication with it / проверяем доступность сервера для HTTP общения с ним
             Uri uri = new Uri(_baseUrl+"/v1/time");
             try
             {
@@ -50,7 +51,7 @@ namespace OsEngine.Market.Servers.Binance
             }
             catch (Exception exception)
             {
-                SendLogMessage("Сервер не доступен. Отсутствуюет интернет. ", LogMessageType.Error);
+                SendLogMessage("Сервер не доступен. Отсутствует интернет. ", LogMessageType.Error);
                 return;
             }
 
@@ -86,6 +87,7 @@ namespace OsEngine.Market.Servers.Binance
         private WebSocket _userDataClient;
 
         /// <summary>
+        /// create user data thread
         /// создать поток пользовательских данных
         /// </summary>
         /// <returns></returns>
@@ -99,7 +101,7 @@ namespace OsEngine.Market.Servers.Binance
 
                 string urlStr = "wss://stream.binance.com:9443/ws/" + _listenKey;
 
-                _userDataClient = new WebSocket(urlStr); //создаем вебсокет
+                _userDataClient = new WebSocket(urlStr); //create a web socket / создаем вебсокет
 
                 _userDataClient.Opened += Connect;
 
@@ -124,14 +126,22 @@ namespace OsEngine.Market.Servers.Binance
         }
 
         /// <summary>
+        /// bring the program to the start. Clear all objects involved in connecting to the server
         /// привести программу к моменту запуска. Очистить все объекты участвующие в подключении к серверу
         /// </summary>
         public void Dispose()
         {
             foreach (var ws in _wsStreams)
             {
+                ws.Value.Opened -= new EventHandler(Connect);
+                ws.Value.Closed -= new EventHandler(Disconnect);
+                ws.Value.Error -= new EventHandler<SuperSocket.ClientEngine.ErrorEventArgs>(WsError);
+                ws.Value.MessageReceived -= new EventHandler<MessageReceivedEventArgs>(GetRes);
+
                 ws.Value.Close();
+                ws.Value.Dispose();
             }
+
             IsConnected = false;
 
             if (Disconnected != null)
@@ -143,16 +153,19 @@ namespace OsEngine.Market.Servers.Binance
         }
 
         /// <summary>
+        /// there was a request to clear the object
         /// произошёл запрос на очистку объекта
         /// </summary>
         private bool _isDisposed;
 
         /// <summary>
+        /// queue of new messages from the exchange server
         /// очередь новых сообщений, пришедших с сервера биржи
         /// </summary>
         private ConcurrentQueue<string> _newUserDataMessage = new ConcurrentQueue<string>();
 
         /// <summary>
+        /// user data handler
         /// обработчик пользовательских данных
         /// </summary>
         /// <param name="sender"></param>
@@ -163,6 +176,7 @@ namespace OsEngine.Market.Servers.Binance
         }
 
         /// <summary>
+        /// close user data stream
         /// закрыть поток пользовательских данных
         /// </summary>
         private void CloseUserDataStream()
@@ -176,6 +190,7 @@ namespace OsEngine.Market.Servers.Binance
         private DateTime _timeStart;
 
         /// <summary>
+        /// every half hour we send the message that the stream does not close
         /// каждые полчаса отправляем сообщение, чтобы поток не закрылся
         /// </summary>
         private void KeepaliveUserDataStream()
@@ -200,6 +215,7 @@ namespace OsEngine.Market.Servers.Binance
 
 
         /// <summary>
+        /// shows whether connection works
         /// работает ли соединение
         /// </summary>
         public bool IsConnected;
@@ -207,6 +223,7 @@ namespace OsEngine.Market.Servers.Binance
         private object _lock = new object();
 
         /// <summary>
+        /// take balance
         /// взять баланс
         /// </summary>
         public AccountResponse GetBalance()
@@ -216,6 +233,11 @@ namespace OsEngine.Market.Servers.Binance
                 try
                 {
                     var res = CreateQuery(Method.GET, "api/v3/account", null, true);
+
+                    if (res == null)
+                    {
+                        return null;
+                    }
 
                     AccountResponse resp = JsonConvert.DeserializeAnonymousType(res, new AccountResponse());
                     if (NewPortfolio != null)
@@ -233,6 +255,7 @@ namespace OsEngine.Market.Servers.Binance
         }
 
         /// <summary>
+        /// take securities
         /// взять бумаги
         /// </summary>
         public SecurityResponce GetSecurities()
@@ -265,6 +288,7 @@ namespace OsEngine.Market.Servers.Binance
         }
 
         /// <summary>
+        /// candles
         /// свечи
         /// </summary>
         private List<Candle> _candles;
@@ -272,6 +296,7 @@ namespace OsEngine.Market.Servers.Binance
         private readonly object _candleLocker = new object();
 
         /// <summary>
+        /// convert JSON to candles
         /// преобразует JSON в свечи
         /// </summary>
         /// <param name="jsonCandles"></param>
@@ -298,11 +323,11 @@ namespace OsEngine.Market.Servers.Binance
 
                             newCandle = new Candle();
                             newCandle.TimeStart = new DateTime(1970, 1, 1).AddMilliseconds(Convert.ToDouble(param[0]));
-                            newCandle.Low = Convert.ToDecimal(param[3].Replace(".", ",").Trim(new char[] { '"', '"' }));
-                            newCandle.High = Convert.ToDecimal(param[2].Replace(".", ",").Trim(new char[] { '"', '"' }));
-                            newCandle.Open = Convert.ToDecimal(param[1].Replace(".", ",").Trim(new char[] { '"', '"' }));
-                            newCandle.Close = Convert.ToDecimal(param[4].Replace(".", ",").Trim(new char[] { '"', '"' }));
-                            newCandle.Volume = Convert.ToDecimal(param[5].Replace(".", ",").Trim(new char[] { '"', '"' }));
+                            newCandle.Low = Convert.ToDecimal(param[3].Replace(",", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator).Trim(new char[] { '"', '"' }), CultureInfo.InvariantCulture);
+                            newCandle.High = Convert.ToDecimal(param[2].Replace(",", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator).Trim(new char[] { '"', '"' }), CultureInfo.InvariantCulture);
+                            newCandle.Open = Convert.ToDecimal(param[1].Replace(",", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator).Trim(new char[] { '"', '"' }), CultureInfo.InvariantCulture);
+                            newCandle.Close = Convert.ToDecimal(param[4].Replace(",", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator).Trim(new char[] { '"', '"' }), CultureInfo.InvariantCulture);
+                            newCandle.Volume = Convert.ToDecimal(param[5].Replace(",", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator).Trim(new char[] { '"', '"' }), CultureInfo.InvariantCulture);
 
                             _candles.Add(newCandle);
                         }
@@ -312,11 +337,11 @@ namespace OsEngine.Market.Servers.Binance
 
                             newCandle = new Candle();
                             newCandle.TimeStart = new DateTime(1970, 1, 1).AddMilliseconds(Convert.ToDouble(param[0]));
-                            newCandle.Low = Convert.ToDecimal(param[3].Replace(".", ",").Trim(new char[] { '"', '"' }));
-                            newCandle.High = Convert.ToDecimal(param[2].Replace(".", ",").Trim(new char[] { '"', '"' }));
-                            newCandle.Open = Convert.ToDecimal(param[1].Replace(".", ",").Trim(new char[] { '"', '"' }));
-                            newCandle.Close = Convert.ToDecimal(param[4].Replace(".", ",").Trim(new char[] { '"', '"' }));
-                            newCandle.Volume = Convert.ToDecimal(param[5].Replace(".", ",").Trim(new char[] { '"', '"' }));
+                            newCandle.Low = Convert.ToDecimal(param[3].Replace(",", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator).Trim(new char[] { '"', '"' }),CultureInfo.InvariantCulture);
+                            newCandle.High = Convert.ToDecimal(param[2].Replace(",", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator).Trim(new char[] { '"', '"' }), CultureInfo.InvariantCulture);
+                            newCandle.Open = Convert.ToDecimal(param[1].Replace(",", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator).Trim(new char[] { '"', '"' }), CultureInfo.InvariantCulture);
+                            newCandle.Close = Convert.ToDecimal(param[4].Replace(",", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator).Trim(new char[] { '"', '"' }), CultureInfo.InvariantCulture);
+                            newCandle.Volume = Convert.ToDecimal(param[5].Replace(",", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator).Trim(new char[] { '"', '"' }), CultureInfo.InvariantCulture);
 
                             _candles.Add(newCandle);
                         }
@@ -333,7 +358,169 @@ namespace OsEngine.Market.Servers.Binance
             }
         }
 
+        public List<Candle> GetCandlesForTimes(string nameSec, TimeSpan tf, DateTime timeStart, DateTime timeEnd)
+        {
+            DateTime yearBegin = new DateTime(1970, 1, 1);
+
+            var timeStampStart = timeStart - yearBegin;
+            var r = timeStampStart.TotalMilliseconds;
+            string startTime = Convert.ToInt64(r).ToString();
+
+            var timeStampEnd = timeEnd - yearBegin;
+            var rEnd = timeStampEnd.TotalMilliseconds;
+            string endTime = Convert.ToInt64(rEnd).ToString();
+
+
+            string needTf = "";
+
+            switch ((int)tf.TotalMinutes)
+            {
+                case 1:
+                    needTf = "1m";
+                    break;
+                case 2:
+                    needTf = "2m";
+                    break;
+                case 3:
+                    needTf = "3m";
+                    break;
+                case 5:
+                    needTf = "5m";
+                    break;
+                case 10:
+                    needTf = "10m";
+                    break;
+                case 15:
+                    needTf = "15m";
+                    break;
+                case 20:
+                    needTf = "20m";
+                    break;
+                case 30:
+                    needTf = "30m";
+                    break;
+                case 45:
+                    needTf = "45m";
+                    break;
+                case 60:
+                    needTf = "1h";
+                    break;
+                case 120:
+                    needTf = "2h";
+                    break;
+            }
+
+            string endPoint = "api/v1/klines";
+
+            if (needTf != "2m" && needTf != "10m" && needTf != "20m" && needTf != "45m")
+            {
+                var param = new Dictionary<string, string>();
+                param.Add("symbol=" + nameSec.ToUpper(), "&interval=" + needTf + "&startTime=" + startTime + "&endTime=" + endTime);
+
+                var res = CreateQuery(Method.GET, endPoint, param, false);
+
+                var candles = _deserializeCandles(res);
+                return candles;
+
+            }
+            else
+            {
+                if (needTf == "2m")
+                {
+                    var param = new Dictionary<string, string>();
+                    param.Add("symbol=" + nameSec.ToUpper(), "&interval=1m" + "&startTime=" + startTime + "&endTime=" + endTime);
+                    var res = CreateQuery(Method.GET, endPoint, param, false);
+                    var candles = _deserializeCandles(res);
+
+                    var newCandles = BuildCandles(candles, 2, 1);
+                    return newCandles;
+                }
+                else if (needTf == "10m")
+                {
+                    var param = new Dictionary<string, string>();
+                    param.Add("symbol=" + nameSec.ToUpper(), "&interval=5m" + "&startTime=" + startTime + "&endTime=" + endTime);
+                    var res = CreateQuery(Method.GET, endPoint, param, false);
+                    var candles = _deserializeCandles(res);
+                    var newCandles = BuildCandles(candles, 10, 5);
+                    return newCandles;
+                }
+                else if (needTf == "20m")
+                {
+                    var param = new Dictionary<string, string>();
+                    param.Add("symbol=" + nameSec.ToUpper(), "&interval=5m" + "&startTime=" + startTime + "&endTime=" + endTime);
+                    var res = CreateQuery(Method.GET, endPoint, param, false);
+                    var candles = _deserializeCandles(res);
+                    var newCandles = BuildCandles(candles, 20, 5);
+                    return newCandles;
+                }
+                else if (needTf == "45m")
+                {
+                    var param = new Dictionary<string, string>();
+                    param.Add("symbol=" + nameSec.ToUpper(), "&interval=15m" + "&startTime=" + startTime + "&endTime=" + endTime);
+                    var res = CreateQuery(Method.GET, endPoint, param, false);
+                    var candles = _deserializeCandles(res);
+                    var newCandles = BuildCandles(candles, 45, 15);
+                    return newCandles;
+                }
+            }
+
+            return null;
+        }
+
+        public List<Trade> GetTickHistoryToSecurity(Security security, string lastId)
+        {
+            try
+            {
+
+                List<Trade> newTrades = new List<Trade>();
+
+                Dictionary<string, string> param = new Dictionary<string, string>();
+
+                if (string.IsNullOrEmpty(lastId) == false)
+                {
+                    param.Add("symbol=" + security.Name, "&limit=1000" + "&fromId=" + lastId);
+                }
+                else
+                {
+                    param.Add("symbol=" + security.Name, "&limit=1000");
+                }
+
+
+                string endPoint = "api/v1/historicalTrades";
+
+                var res2 = CreateQuery(Method.GET, endPoint, param, false);
+
+                List<HistoryTrade> tradeHistory = JsonConvert.DeserializeAnonymousType(res2, new List<HistoryTrade>());
+
+                //tradeHistory.Reverse();
+
+                foreach (var trades in tradeHistory)
+                {
+                    Trade trade = new Trade();
+                    trade.SecurityNameCode = security.Name;
+                    trade.Price = trades.price.ToDecimal();
+
+                    trade.Id = trades.id.ToString();
+                    trade.Time = new DateTime(1970, 1, 1).AddMilliseconds(Convert.ToDouble(trades.time));
+                    trade.Volume =
+                            trades.qty.ToDecimal();
+                    trade.Side = Convert.ToBoolean(trades.isBuyerMaker) == true ? Side.Buy : Side.Sell;
+
+                    newTrades.Add(trade);
+                }
+
+                return newTrades;
+
+            }
+            catch (Exception error)
+            {
+                SendLogMessage(error.ToString(), LogMessageType.Error);
+                return null;
+            }
+        }
+
         /// <summary>
+        /// take candles
         /// взять свечи
         /// </summary>
         /// <returns></returns>
@@ -436,6 +623,7 @@ namespace OsEngine.Market.Servers.Binance
         }
 
         /// <summary>
+        /// converts candles of one timeframe to a larger
         /// преобразует свечи одного таймфрейма в больший
         /// </summary>
         /// <param name="oldCandles"></param>
@@ -479,7 +667,7 @@ namespace OsEngine.Market.Servers.Binance
                 if (counter == count)
                 {
                     newCandle.Close = oldCandles[i].Close;
-                    newCandle.State = CandleStates.Finished;
+                    newCandle.State = CandleState.Finished;
                     newCandles.Add(newCandle);
                     counter = 0;
                 }
@@ -487,7 +675,7 @@ namespace OsEngine.Market.Servers.Binance
                 if (i == oldCandles.Count - 1 && counter != count)
                 {
                     newCandle.Close = oldCandles[i].Close;
-                    newCandle.State = CandleStates.None;
+                    newCandle.State = CandleState.None;
                     newCandles.Add(newCandle);
                 }
             }
@@ -495,11 +683,13 @@ namespace OsEngine.Market.Servers.Binance
             return newCandles;
         }
         /// <summary>
+        /// multi-threaded access locker to http-requests
         /// блокиратор многопоточного доступа к http запросам
         /// </summary>
         private object _queryHttpLocker = new object();
 
         /// <summary>
+        /// method sends a request and returns a response from the server
         /// метод отправляет запрос и возвращает ответ от сервера
         /// </summary>
         public string CreateQuery(Method method, string endpoint, Dictionary<string, string> param = null,
@@ -561,7 +751,6 @@ namespace OsEngine.Market.Servers.Binance
             }
         }
 
-
         #region Аутентификация запроса
 
         private string GetNonce()
@@ -598,11 +787,12 @@ namespace OsEngine.Market.Servers.Binance
 
         #endregion
 
-
+        // work with orders
         //работа с ордерами
 
 
         /// <summary>
+        /// execute order
         /// исполнить ордер
         /// </summary>
         /// <param name="order"></param>
@@ -633,9 +823,17 @@ namespace OsEngine.Market.Servers.Binance
 
                     var res = CreateQuery(Method.POST, "api/v3/order", param, true);
 
-                    if (res != null && res.Contains("code"))
+                    if (res != null && res.Contains("clientOrderId"))
                     {
                         SendLogMessage(res, LogMessageType.Trade);
+                    }
+                    else
+                    {
+                        order.State = OrderStateType.Fail;
+                        if (MyOrderEvent != null)
+                        {
+                            MyOrderEvent(order);
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -648,7 +846,8 @@ namespace OsEngine.Market.Servers.Binance
         private object _lockOrder = new object();
 
         /// <summary>
-        /// отменить оредр
+        /// cancel order
+        /// отменить ордер
         /// </summary>
         public void CanselOrder(Order order)
         {
@@ -671,23 +870,126 @@ namespace OsEngine.Market.Servers.Binance
             }
         }
 
+        /// <summary>
+        /// chack order state
+        /// проверить ордера на состояние
+        /// </summary>
+        public bool GetAllOrders(List<Order> oldOpenOrders)
+        {
+            List<string> namesSec = new List<string>();
 
+            for (int i = 0; i < oldOpenOrders.Count; i++)
+            {
+                if (namesSec.Find(name => name.Contains(oldOpenOrders[i].SecurityNameCode)) == null)
+                {
+                    namesSec.Add(oldOpenOrders[i].SecurityNameCode);
+                }
+            }
+
+
+            string endPoint = "/api/v3/allOrders";
+
+            List<HistoryOrderReport> allOrders = new List<HistoryOrderReport>();
+
+            for (int i = 0; i < namesSec.Count; i++)
+            {
+                var param = new Dictionary<string, string>();
+                param.Add("symbol=", namesSec[i].ToUpper());
+                //param.Add("&recvWindow=" , "100");
+                //param.Add("&limit=", GetNonce());
+                param.Add("&limit=", "500");
+                //"symbol={symbol.ToUpper()}&recvWindow={recvWindow}"
+
+                var res = CreateQuery(Method.GET, endPoint, param, true);
+
+                HistoryOrderReport[] orders = JsonConvert.DeserializeObject<HistoryOrderReport[]>(res);
+
+                if (orders != null && orders.Length != 0)
+                {
+                    allOrders.AddRange(orders);
+                }
+            }
+
+            for (int i = 0; i < oldOpenOrders.Count; i++)
+            {
+                HistoryOrderReport myOrder = allOrders.Find(ord => ord.orderId == oldOpenOrders[i].NumberMarket);
+
+                if (myOrder == null)
+                {
+                    continue;
+                }
+
+                if (myOrder.status == "NEW")
+                { // order is active. Do nothing / ордер активен. Ничего не делаем
+                    continue;
+                }
+
+                else if (myOrder.status == "FILLED" ||
+                    myOrder.status == "PARTIALLY_FILLED")
+                { // order executed / ордер исполнен
+
+                    MyTrade trade = new MyTrade();
+                    trade.NumberOrderParent = oldOpenOrders[i].NumberMarket;
+                    trade.NumberTrade = NumberGen.GetNumberOrder(StartProgram.IsOsTrader).ToString();
+                    trade.SecurityNameCode = oldOpenOrders[i].SecurityNameCode;
+                    trade.Time = new DateTime(1970, 1, 1).AddMilliseconds(Convert.ToDouble(myOrder.updateTime));
+                    trade.Side = oldOpenOrders[i].Side;
+                    
+                    if (MyTradeEvent != null)
+                    {
+                        MyTradeEvent(trade);
+                    }
+                }
+                else
+                {
+                    Order newOrder = new Order();
+                    newOrder.NumberMarket = oldOpenOrders[i].NumberMarket;
+                    newOrder.NumberUser = oldOpenOrders[i].NumberUser;
+                    newOrder.SecurityNameCode = oldOpenOrders[i].SecurityNameCode;
+                    newOrder.State = OrderStateType.Cancel;
+                   
+                    newOrder.Volume = oldOpenOrders[i].Volume;
+                    newOrder.VolumeExecute = oldOpenOrders[i].VolumeExecute;
+                    newOrder.Price = oldOpenOrders[i].Price;
+                    newOrder.TypeOrder = oldOpenOrders[i].TypeOrder;
+                    newOrder.TimeCallBack = new DateTime(1970, 1, 1).AddMilliseconds(Convert.ToDouble(myOrder.updateTime));
+                    newOrder.TimeCancel = newOrder.TimeCallBack;
+                    newOrder.ServerType = ServerType.Binance;
+                    newOrder.PortfolioNumber = oldOpenOrders[i].PortfolioNumber;
+
+                    if (MyOrderEvent != null)
+                    {
+                        MyOrderEvent(newOrder);
+                    }
+                }
+            }
+            return true;
+        }
+
+        // stream data from WEBSOCKET
         // потоковые данные из WEBSOCKET
 
         /// <summary>
+        /// WebSocket client
         /// клиент вебсокет
         /// </summary>
         private WebSocket _wsClient;
 
         /// <summary>
+        /// takes messages that came through ws and puts them in a general queue
         /// берет пришедшие через ws сообщения и кладет их в общую очередь
         /// </summary>        
         private void GetRes(object sender, MessageReceivedEventArgs e)
         {
+            if (_isDisposed == true)
+            {
+                return;
+            }
             _newMessage.Enqueue(e.Message);
         }
 
         /// <summary>
+        /// ws-connection is opened
         /// соединение по ws открыто
         /// </summary>
         /// <param name="sender"></param>
@@ -698,6 +1000,7 @@ namespace OsEngine.Market.Servers.Binance
         }
 
         /// <summary>
+        /// ws-connection is closed
         /// соединение по ws закрыто
         /// </summary>
         /// <param name="sender"></param>
@@ -718,6 +1021,7 @@ namespace OsEngine.Market.Servers.Binance
         }
 
         /// <summary>
+        /// error from ws4net
         /// ошибка из ws4net
         /// </summary>
         /// <param name="sender"></param>
@@ -728,25 +1032,31 @@ namespace OsEngine.Market.Servers.Binance
         }
 
         /// <summary>
+        /// queue of new messages from the exchange server
         /// очередь новых сообщений, пришедших с сервера биржи
         /// </summary>
         private ConcurrentQueue<string> _newMessage = new ConcurrentQueue<string>();
 
         /// <summary>
+        /// data stream collection
         /// коллекция потоков данных
         /// </summary>
         private Dictionary<string, WebSocket> _wsStreams = new Dictionary<string, WebSocket>();
 
         /// <summary>
+        /// subscribe this security to get depths and trades
         /// подписать данную бумагу на получение стаканов и трейдов
         /// </summary>
         public void SubscribleTradesAndDepths(Security security)
         {
             if (!_wsStreams.ContainsKey(security.Name))
             {
-                string urlStr = "wss://stream.binance.com:9443/stream?streams=" + security.Name.ToLower() + "@depth20/" +security.Name.ToLower() + "@trade";
+                string urlStr = "wss://stream.binance.com:9443/stream?streams=" 
+                                + security.Name.ToLower() 
+                                + "@depth20/" 
+                                + security.Name.ToLower() + "@trade";
 
-                _wsClient = new WebSocket(urlStr); //создаем вебсокет
+                _wsClient = new WebSocket(urlStr); // create web-socket / создаем вебсокет
 
                 _wsClient.Opened += new EventHandler(Connect);
 
@@ -764,6 +1074,7 @@ namespace OsEngine.Market.Servers.Binance
         }
 
         /// <summary>
+        /// takes messages from the general queue, converts them to C # classes and sends them to up
         /// берет сообщения из общей очереди, конвертирует их в классы C# и отправляет на верх
         /// </summary>
         public void ConverterUserData()
@@ -772,11 +1083,6 @@ namespace OsEngine.Market.Servers.Binance
             {
                 try
                 {
-                    if (_isDisposed)
-                    {
-                        return;
-                    }
-
                     if (!_newUserDataMessage.IsEmpty)
                     {
                         string mes;
@@ -820,8 +1126,10 @@ namespace OsEngine.Market.Servers.Binance
                                     //newOrder.PortfolioNumber = order.PortfolioNumber; добавить в сервере
                                     newOrder.Side = order.S == "BUY" ? Side.Buy : Side.Sell;
                                     newOrder.State = OrderStateType.Activ;
-                                    newOrder.Volume = Convert.ToDecimal(order.q.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
-                                    newOrder.Price = Convert.ToDecimal(order.p.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
+                                    newOrder.Volume = order.q.ToDecimal();
+                                    newOrder.Price = order.p.ToDecimal();
+                                    newOrder.ServerType = ServerType.Binance;
+                                    newOrder.PortfolioNumber = newOrder.SecurityNameCode;
 
                                     if (MyOrderEvent != null)
                                     {
@@ -833,12 +1141,15 @@ namespace OsEngine.Market.Servers.Binance
                                     Order newOrder = new Order();
                                     newOrder.SecurityNameCode = order.s;
                                     newOrder.TimeCallBack = new DateTime(1970, 1, 1).AddMilliseconds(Convert.ToDouble(order.E));
+                                    newOrder.TimeCancel = newOrder.TimeCallBack;
                                     newOrder.NumberUser = Convert.ToInt32(orderNumUser);
                                     newOrder.NumberMarket = order.i.ToString();
                                     newOrder.Side = order.S == "BUY" ? Side.Buy : Side.Sell;
                                     newOrder.State = OrderStateType.Cancel;
-                                    newOrder.Volume = Convert.ToDecimal(order.q.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
-                                    newOrder.Price = Convert.ToDecimal(order.p.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
+                                    newOrder.Volume = order.q.ToDecimal();
+                                    newOrder.Price = order.p.ToDecimal();
+                                    newOrder.ServerType = ServerType.Binance;
+                                    newOrder.PortfolioNumber = newOrder.SecurityNameCode;
 
                                     if (MyOrderEvent != null)
                                     {
@@ -854,8 +1165,10 @@ namespace OsEngine.Market.Servers.Binance
                                     newOrder.NumberMarket = order.i.ToString();
                                     newOrder.Side = order.S == "BUY" ? Side.Buy : Side.Sell;
                                     newOrder.State = OrderStateType.Fail;
-                                    newOrder.Volume = Convert.ToDecimal(order.q.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
-                                    newOrder.Price = Convert.ToDecimal(order.p.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
+                                    newOrder.Volume = order.q.ToDecimal();
+                                    newOrder.Price = order.p.ToDecimal();
+                                    newOrder.ServerType = ServerType.Binance;
+                                    newOrder.PortfolioNumber = newOrder.SecurityNameCode;
 
                                     if (MyOrderEvent != null)
                                     {
@@ -869,9 +1182,10 @@ namespace OsEngine.Market.Servers.Binance
                                     trade.Time = new DateTime(1970, 1, 1).AddMilliseconds(Convert.ToDouble(order.T));
                                     trade.NumberOrderParent = order.i.ToString();
                                     trade.NumberTrade = order.t.ToString();
-                                    trade.Volume = Convert.ToDecimal(order.l.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
-                                    trade.Price = Convert.ToDecimal(order.L.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
+                                    trade.Volume = order.l.ToDecimal();
+                                    trade.Price = order.L.ToDecimal();
                                     trade.SecurityNameCode = order.s;
+                                    trade.Side = order.S == "BUY" ? Side.Buy : Side.Sell;
 
                                     if (MyTradeEvent != null)
                                     {
@@ -883,12 +1197,15 @@ namespace OsEngine.Market.Servers.Binance
                                     Order newOrder = new Order();
                                     newOrder.SecurityNameCode = order.s;
                                     newOrder.TimeCallBack = new DateTime(1970, 1, 1).AddMilliseconds(Convert.ToDouble(order.E));
+                                    newOrder.TimeCancel = newOrder.TimeCallBack;
                                     newOrder.NumberUser = Convert.ToInt32(orderNumUser);
                                     newOrder.NumberMarket = order.i.ToString();
                                     newOrder.Side = order.S == "BUY" ? Side.Buy : Side.Sell;
                                     newOrder.State = OrderStateType.Cancel;
-                                    newOrder.Volume = Convert.ToDecimal(order.q.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
-                                    newOrder.Price = Convert.ToDecimal(order.p.Replace(".", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
+                                    newOrder.Volume = order.q.ToDecimal();
+                                    newOrder.Price = order.p.ToDecimal();
+                                    newOrder.ServerType = ServerType.Binance;
+                                    newOrder.PortfolioNumber = newOrder.SecurityNameCode;
 
                                     if (MyOrderEvent != null)
                                     {
@@ -911,17 +1228,26 @@ namespace OsEngine.Market.Servers.Binance
                             }
                         }
                     }
+                    else
+                    {
+                        if (_isDisposed)
+                        {
+                            return;
+                        }
+                        Thread.Sleep(1);
+                    }
                 }
 
                 catch (Exception exception)
                 {
                     SendLogMessage(exception.ToString(), LogMessageType.Error);
                 }
-                Thread.Sleep(1);
+                
             }
         }
 
         /// <summary>
+        /// takes messages from the general queue, converts them to C # classes and sends them to up
         /// берет сообщения из общей очереди, конвертирует их в классы C# и отправляет на верх
         /// </summary>
         public void Converter()
@@ -930,11 +1256,6 @@ namespace OsEngine.Market.Servers.Binance
             {
                 try
                 {
-                    if (_isDisposed)
-                    {
-                        return;
-                    }
-
                     if (!_newMessage.IsEmpty)
                     {
                         string mes;
@@ -969,68 +1290,85 @@ namespace OsEngine.Market.Servers.Binance
                             }
                         }
                     }
+                    else
+                    {
+                        if (_isDisposed)
+                        {
+                            return;
+                        }
+                        Thread.Sleep(1);
+                    }
                 }
 
                 catch (Exception exception)
                 {
                     SendLogMessage(exception.ToString(), LogMessageType.Error);
                 }
-                Thread.Sleep(1);
             }
         }
 
-        #region исходящие события
+        #region outgoing events / исходящие события
 
         /// <summary>
+        /// my new orders
         /// новые мои ордера
         /// </summary>
         public event Action<Order> MyOrderEvent;
 
         /// <summary>
+        /// my new trades
         /// новые мои сделки
         /// </summary>
         public event Action<MyTrade> MyTradeEvent;
 
         /// <summary>
+        /// new portfolios
         /// новые портфели
         /// </summary>
         public event Action<AccountResponse> NewPortfolio;
 
         /// <summary>
+        /// portfolios updated
         /// обновились портфели
         /// </summary>
         public event Action<OutboundAccountInfo> UpdatePortfolio;
 
         /// <summary>
+        /// new security in the system
         /// новые бумаги в системе
         /// </summary>
         public event Action<SecurityResponce> UpdatePairs;
 
         /// <summary>
+        /// depth updated
         /// обновился стакан
         /// </summary>
         public event Action<DepthResponse> UpdateMarketDepth;
 
         /// <summary>
+        /// ticks updated
         /// обновились тики
         /// </summary>
         public event Action<TradeResponse> NewTradesEvent;
 
         /// <summary>
+        /// API connection established
         /// соединение с API установлено
         /// </summary>
         public event Action Connected;
 
         /// <summary>
+        /// API connection lost
         /// соединение с API разорвано
         /// </summary>
         public event Action Disconnected;
 
         #endregion
 
-        #region сообщения для лога
+        #region log messages / сообщения для лога
 
         /// <summary>
+        /// add a new log message
         /// добавить в лог новое сообщение
         /// </summary>
         private void SendLogMessage(string message, LogMessageType type)
@@ -1042,12 +1380,11 @@ namespace OsEngine.Market.Servers.Binance
         }
 
         /// <summary>
+        /// send exeptions
         /// отправляет исключения
         /// </summary>
         public event Action<string, LogMessageType> LogMessageEvent;
 
         #endregion
-
     }
-
 }

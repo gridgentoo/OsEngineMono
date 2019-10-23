@@ -1,29 +1,35 @@
 ﻿/*
+ * Your rights to use code governed by this license http://o-s-a.net/doc/license_simple_engine.pdf
  *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
 using System.Windows;
 using System.Windows.Forms;
+using OsEngine.Language;
 using TextBox = System.Windows.Forms.TextBox;
 
 namespace OsEngine.Charts.CandleChart.Indicators
 {
     /// <summary>
+    /// Interaction logic  for MacdLineUi.xaml
     /// Логика взаимодействия для MacdLineUi.xaml
     /// </summary>
     public partial class MacdLineUi
     {
         /// <summary>
+        /// indicator
         /// индикатор
         /// </summary>
-        private MacdLine _macd; 
-         
+        private MacdLine _macd;
+
         /// <summary>
+        /// whether indicator settings have been changed
         /// изменялись ли настройки индикатора
         /// </summary>
         public bool IsChange;
 
         /// <summary>
+        /// constructor
         /// конструктор
         /// </summary>
         public MacdLineUi(MacdLine macd)
@@ -37,9 +43,15 @@ namespace OsEngine.Charts.CandleChart.Indicators
             HostColorDown.Child.BackColor = _macd.ColorDown;
             CheckBoxPaintOnOff.IsChecked = _macd.PaintOn;
 
+            ButtonColorMacd.Content = OsLocalization.Charts.LabelButtonIndicatorColorUp;
+            ButtonColorSignalLine.Content = OsLocalization.Charts.LabelButtonIndicatorColorDown;
+            CheckBoxPaintOnOff.Content = OsLocalization.Charts.LabelPaintIntdicatorIsVisible;
+            ButtonAccept.Content = OsLocalization.Charts.LabelButtonIndicatorAccept;
+
         }
 
         /// <summary>
+        /// accept button
         /// кнопка принять
         /// </summary>
         private void ButtonAccept_Click(object sender, RoutedEventArgs e)

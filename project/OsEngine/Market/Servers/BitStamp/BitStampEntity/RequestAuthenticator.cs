@@ -1,9 +1,9 @@
-﻿using RestSharp;
-using System;
+﻿using System;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using RestSharp;
 
 namespace OsEngine.Market.Servers.BitStamp.BitStampEntity
 {
@@ -91,6 +91,7 @@ namespace OsEngine.Market.Servers.BitStamp.BitStampEntity
         }
 
         /// <summary>
+        /// upload server settings from file
         /// загрузить настройки сервера из файла
         /// </summary>
         private int Load()
@@ -119,6 +120,7 @@ namespace OsEngine.Market.Servers.BitStamp.BitStampEntity
         }
 
         /// <summary>
+        /// save server settings in file
         /// сохранить настройки сервера в файл
         /// </summary>
         private void Save()

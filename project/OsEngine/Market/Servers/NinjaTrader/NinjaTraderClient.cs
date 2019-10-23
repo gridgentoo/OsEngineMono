@@ -1,4 +1,5 @@
 ﻿/*
+ *Your rights to use the code are governed by this license https://github.com/AlexWan/OsEngine/blob/master/LICENSE
  *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
@@ -11,14 +12,15 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using OsEngine.Entity;
+using OsEngine.Language;
 using OsEngine.Logging;
-using OsEngine.Market.Servers.Entity;
 
 namespace OsEngine.Market.Servers.NinjaTrader
 {
     public class NinjaTraderClient
     {
         /// <summary>
+		/// class realizing the connection to Ninja
         /// класс реализующий подключение к нинзе
         /// </summary>
         public NinjaTraderClient(string serverAddres, string port)
@@ -29,6 +31,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
         }
 
         /// <summary>
+		/// dispose the object
         /// освободить объект
         /// </summary>
         public void Dispose()
@@ -43,6 +46,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
         }
 
         /// <summary>
+		/// connect
         /// подключиться 
         /// </summary>
         public void Connect()
@@ -52,9 +56,11 @@ namespace OsEngine.Market.Servers.NinjaTrader
 
         public bool IsConnected;
 
+// request to Ninja
 // запросы к Нинзе
 
         /// <summary>
+		/// request list of securities
         /// запросить список бумаг
         /// </summary>
         public void GetSecurities()
@@ -63,6 +69,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
         }
 
         /// <summary>
+		/// request list of portfolios
         /// запросить список портфелей
         /// </summary>
         public void GetPortfolios()
@@ -71,6 +78,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
         }
 
         /// <summary>
+		/// subscribe to depths and trades
         /// подписаться на стаканы и трейды
         /// </summary>
         public void SubscribleTradesAndDepths(Security securityName)
@@ -80,6 +88,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
         }
 
         /// <summary>
+		/// execute order
         /// исполнить ордер
         /// </summary>
         public void ExecuteOrder(Order order)
@@ -96,6 +105,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
         }
 
         /// <summary>
+		/// cancel order
         /// отозвать ордер
         /// </summary>
         public void CanselOrder(Order order)
@@ -111,19 +121,23 @@ namespace OsEngine.Market.Servers.NinjaTrader
             _messagesToSend.Enqueue(orderMes);
         }
 
+// thread sending request messages
 // поток отсылающий сообщения с запросами
 
         /// <summary>
+		/// whether need threads to be stopped
         /// нужно ли чтобы потоки были остановлены
         /// </summary>
         private bool _threadsNeadToStop;
 
         /// <summary>
+		/// messages for sending to Ninja
         /// сообщения для отправки в Нинзю
         /// </summary>
         private ConcurrentQueue<string> _messagesToSend = new ConcurrentQueue<string>();
 
         /// <summary>
+		/// work place of thread communicating with Ninja
         /// место работы потока поддерживающего связь с нинзей
         /// </summary>
         private void WorkerPlace()
@@ -138,7 +152,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
                         return;
                     }
                     if (_messagesToSend.IsEmpty)
-                    { // запрос каких-либо входящих данных для нас, которые копятся в сервере
+                    { // request any incoming data for us that are saving in server / запрос каких-либо входящих данных для нас, которые копятся в сервере
                         IncomeMessageFromSender(SendMessage("Process"));
                         continue;
                     }
@@ -162,27 +176,28 @@ namespace OsEngine.Market.Servers.NinjaTrader
         }
 
         /// <summary>
+		/// send message to Ninja
         /// послать сообщение в нинзю
         /// </summary>
         private string SendMessage(string message)
         {
-            // Соединяемся с удаленным устройством
+            // Connect to remote device / Соединяемся с удаленным устройством
 
-            // Устанавливаем удаленную точку для сокета
+            // Set a remote point for socket / Устанавливаем удаленную точку для сокета
             IPHostEntry ipHost = Dns.GetHostEntry("localhost");
             IPAddress ipAddr = ipHost.AddressList[1];
             IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, 11000);
 
             Socket sender = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
-            // Соединяем сокет с удаленной точкой
+            // Connecting socket to remote point / Соединяем сокет с удаленной точкой
             try
             {
                 sender.Connect(ipEndPoint);
             }
             catch (Exception)
             {
-                SendLogMessage("Ninja не отвечает. Вероятно у Вас не активен скрипт OsEngineConnect в Ninja",
+                SendLogMessage(OsLocalization.Market.Message76,
                     LogMessageType.Error);
                 Thread.Sleep(10000);
             }
@@ -190,11 +205,11 @@ namespace OsEngine.Market.Servers.NinjaTrader
 
             byte[] msg = Encoding.UTF8.GetBytes(message);
 
-            // Отправляем данные через сокет
+            // send data through socket / Отправляем данные через сокет
             sender.Send(msg);
 
 
-            // Буфер для входящих данных
+            // Input buffer / Буфер для входящих данных
             byte[] bytes = new byte[1024];
 
             if (message == "GetSecurities")
@@ -202,21 +217,23 @@ namespace OsEngine.Market.Servers.NinjaTrader
                 bytes = new byte[1048576];
             }
 
-            // Получаем ответ от сервера
+            // get response from the server / Получаем ответ от сервера
             int bytesRec = sender.Receive(bytes);
 
             string request = Encoding.UTF8.GetString(bytes, 0, bytesRec);
 
-            // Освобождаем сокет
+            // clear socket / Освобождаем сокет
             sender.Shutdown(SocketShutdown.Both);
             sender.Close();
 
             return request;
         }
 
+// processing responses after our requests
 // обработка ответов после наших запросов     
 
         /// <summary>
+		/// place to sort incoming data from Ninja
         /// место сортировки входящих от нинзи данных
         /// </summary>
         /// <param name="message"></param>
@@ -260,7 +277,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
             }
             else if (tag == "error")
             {
-                SendLogMessage("Ошибка на стороне нинзи " + message, LogMessageType.Error);
+                SendLogMessage("Ninja script error " + message, LogMessageType.Error);
             }
             else if (tag == "orders")
             {
@@ -293,11 +310,13 @@ namespace OsEngine.Market.Servers.NinjaTrader
         }
 
         /// <summary>
+		/// list of depths that we get from Ninja
         /// список стаканов которые мы получаем из нинзи
         /// </summary>
         private List<MarketDepth> _marketDepths = new List<MarketDepth>();
 
         /// <summary>
+		/// order withdrawal notification has been received
         /// пришло оповещение об отзыве ордера
         /// </summary>
         private void OrderCanselReport(string message)
@@ -324,6 +343,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
         }
 
         /// <summary>
+		/// parsing incoming messages about order execution
         /// разбор входящих сообощений об исполнении ордера
         /// </summary>
         private void OrderExecuteReport(string message)
@@ -342,7 +362,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
                     MyOrderEvent(errorOrder);
                 }
 
-                SendLogMessage("Ордер № " + errorOrder.NumberUser + " не выставился. Ошибка: " + message, LogMessageType.Error);
+                SendLogMessage("Order # " + errorOrder.NumberUser + " dont execute. Error: " + message, LogMessageType.Error);
             }
             if (str[0] == "Accept")
             {
@@ -350,7 +370,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
                 order.NumberUser = Convert.ToInt32(str[1]);
                 order.NumberMarket = str[3];
                 order.State = OrderStateType.Activ;
-                order.TimeCallBack = Convert.ToDateTime(str[4]);
+                order.TimeCallBack = Convert.ToDateTime(str[4], CultureInfo.InvariantCulture);
 
                 if (MyOrderEvent != null)
                 {
@@ -363,6 +383,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
         }
 
         /// <summary>
+        /// parsing incoming messages about depth
         /// разбор входящих сообощений о стакане
         /// </summary>
         private void LoadMarketDepths(string message)
@@ -398,13 +419,14 @@ namespace OsEngine.Market.Servers.NinjaTrader
 
                 if (str[1] == "Ask")
                 {
-                    level.Ask = Convert.ToDecimal(str[4]);
+                    level.Ask = str[4].ToDecimal();
                 }
                 else
                 {
-                    level.Bid = Convert.ToDecimal(str[4]);
+                    level.Bid = str[4].ToDecimal();
                 }
-                level.Price = Convert.ToDecimal(str[3]);
+
+                level.Price = str[3].ToDecimal();
 
                 MarketDepth myDepth = _marketDepths.Find(m => m.SecurityNameCode == str[0]);
 
@@ -415,7 +437,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
                     _marketDepths.Add(myDepth);
                 }
 
-                myDepth.Time = Convert.ToDateTime(str[5]);
+                myDepth.Time = Convert.ToDateTime(str[5], CultureInfo.InvariantCulture);
 
                 if (myDepth.Bids == null)
                 {
@@ -432,6 +454,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
                 {
                     AddAsk(myDepth.Asks, level);
                 }
+
                 if (str[1] == "Ask" && str[2] == "Remove")
                 {
                     Remove(myDepth.Asks, level);
@@ -441,9 +464,32 @@ namespace OsEngine.Market.Servers.NinjaTrader
                 {
                     AddBid(myDepth.Bids, level);
                 }
+
                 if (str[1] == "Bid" && str[2] == "Remove")
                 {
                     Remove(myDepth.Bids, level);
+                }
+
+                if (myDepth.Bids != null &&
+                    myDepth.Bids.Count > 0 &&
+                    myDepth.Asks != null &&
+                    myDepth.Asks.Count > 0)
+
+                {
+                    while(str[1] == "Bid" && (str[2] == "Add" || str[2] == "Update") &&
+                          myDepth.Asks.Count > 0 &&
+                        myDepth.Bids[0].Price >= myDepth.Asks[0].Price)
+                    {
+                        myDepth.Asks.RemoveAt(0);
+                    }
+
+                    while (str[1] == "Ask" && (str[2] == "Add" || str[2] == "Update") &&
+                        myDepth.Bids.Count > 0 &&
+                        myDepth.Bids[0].Price >= myDepth.Asks[0].Price)
+                    {
+                        myDepth.Bids.RemoveAt(0);
+                    }
+
                 }
 
                 while (myDepth.Asks != null &&
@@ -458,26 +504,20 @@ namespace OsEngine.Market.Servers.NinjaTrader
                     myDepth.Bids.RemoveAt(myDepth.Bids.Count - 1);
                 }
 
-                if (myDepth.Bids != null &&
-                    myDepth.Bids.Count > 0 &&
-                    myDepth.Asks != null &&
-                    myDepth.Asks.Count > 0)
-
+                if (myDepth.Time == DateTime.MinValue)
                 {
-                    if (str[1] == "Bid" &&
-                        myDepth.Bids[0].Price >= myDepth.Asks[0].Price)
-                    {
-                        myDepth.Asks.RemoveAt(0);
-                    }
-                    if (str[1] == "Ask" &&
-                    myDepth.Bids[0].Price >= myDepth.Asks[0].Price)
-                    {
-                        myDepth.Bids.RemoveAt(0);
-                    }
-
+                    return;
                 }
 
-            if (UpdateMarketDepth != null)
+                if (myDepth.Asks == null ||
+                    myDepth.Bids == null ||
+                    myDepth.Asks.Count == 0||
+                    myDepth.Bids.Count == 0)
+                {
+                    return;
+                }
+
+                if (UpdateMarketDepth != null)
                 {
                     UpdateMarketDepth(myDepth.GetCopy());
                 }
@@ -485,7 +525,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
         }
 
         private void AddBid(List<MarketDepthLevel> levels, MarketDepthLevel newLevel)
-        { // уровни покупок.  с индексом ноль бОльшее значение 
+        { // buy levels. with index zero greater value / уровни покупок.  с индексом ноль бОльшее значение 
             for (int i = 0; i < levels.Count; i++)
             {
                 if (levels[i].Price == newLevel.Price)
@@ -505,7 +545,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
         }
 
         private void AddAsk(List<MarketDepthLevel> levels, MarketDepthLevel newLevel)
-        {// уровни продаж.  с индексом ноль меньшее значение 
+        {// sale levels. with index zero lower value / уровни продаж.  с индексом ноль меньшее значение 
             for (int i = 0; i < levels.Count; i++)
             {
                 if (levels[i].Price == newLevel.Price)
@@ -537,13 +577,14 @@ namespace OsEngine.Market.Servers.NinjaTrader
         }
 
         /// <summary>
+		/// parsing incoming messages about portfolios
         /// разбор входящих сообщений о портфелях
         /// </summary>
         private void LoadPortfolios(string message)
         {
-           /* string portfolioStr = account.Name + "#"; // портфель
+           /* string portfolioStr = account.Name + "#"; // portfolio / портфель
 
-            portfolioStr += value + "$"; // текущее кол-во денег на счёте
+            portfolioStr += value + "$"; // current amount of money in the account / текущее кол-во денег на счёте
             */
             if (_portfolios == null)
             {
@@ -558,7 +599,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
 
                 Portfolio newPos = new Portfolio();
                 newPos.Number = trdStr[0];
-                newPos.ValueCurrent= Convert.ToDecimal(trdStr[1]);
+                newPos.ValueCurrent= trdStr[1].ToDecimal();
 
                 Portfolio myPortfolio = _portfolios.Find(p => p.Number == newPos.Number);
 
@@ -577,17 +618,18 @@ namespace OsEngine.Market.Servers.NinjaTrader
                 }
             }
         }
-
+        
         private List<Portfolio> _portfolios;
 
         /// <summary>
+		/// parsing incoming messages about positions
         /// разбор входящих сообщений о позициях
         /// </summary>
         private void LoadPositions(string message)
         {
-            /*string positionstr = position.Instrument.FullName + "#"; // бумага
-            positionstr += position.Account.Name + "#"; // название портфеля
-            positionstr += position.Quantity + "$"; // текущий объём на рынке
+            /*string positionstr = position.Instrument.FullName + "#"; // security / бумага
+            positionstr += position.Account.Name + "#"; // portfolio name / название портфеля
+            positionstr += position.Quantity + "$"; // current volume in the market / текущий объём на рынке
             */
 
             if (_portfolios == null || _portfolios.Count == 0)
@@ -604,7 +646,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
                 PositionOnBoard newPos = new PositionOnBoard();
                 newPos.SecurityNameCode = trdStr[0];
                 newPos.PortfolioName= trdStr[1];
-                newPos.ValueCurrent = Convert.ToDecimal(trdStr[2]);
+                newPos.ValueCurrent = trdStr[2].ToDecimal();
 
                 Portfolio myPortfolio = _portfolios.Find(p => p.Number == newPos.PortfolioName);
 
@@ -621,17 +663,18 @@ namespace OsEngine.Market.Servers.NinjaTrader
                 }
             }
         }
-
+        
         /// <summary>
+		/// parsing incoming messages about trades
         /// разбор входящих сообщений о трейдах
         /// </summary>
         private void LoadMyTrades(string message)
         {
-           /* string tradeStr = execution.Instrument.FullName + "#"; // имя инструмента
-            tradeStr += execution.ExecutionId + "#"; // номер на бирже
-            tradeStr += execution.OrderId + "#"; // номер ордера по которому прошла сделка
-            tradeStr += execution.Price + "#"; // цена сведения
-            tradeStr += execution.Quantity + "#"; // объём
+           /* string tradeStr = execution.Instrument.FullName + "#"; // security name / имя инструмента
+            tradeStr += execution.ExecutionId + "#"; // number in the exchange / номер на бирже
+            tradeStr += execution.OrderId + "#"; // order number / номер ордера по которому прошла сделка
+            tradeStr += execution.Price + "#"; // matching price / цена сведения
+            tradeStr += execution.Quantity + "#"; // volume / объём
 
             if (execution.MarketPosition == MarketPosition.Long)
             {
@@ -655,10 +698,10 @@ namespace OsEngine.Market.Servers.NinjaTrader
                 newMyTrade.SecurityNameCode = trdStr[0];
                 newMyTrade.NumberTrade= trdStr[1];
                 newMyTrade.NumberOrderParent = trdStr[2];
-                newMyTrade.Price = Convert.ToDecimal(trdStr[3]);
-                newMyTrade.Volume= Convert.ToDecimal(trdStr[4]);
+                newMyTrade.Price = trdStr[3].ToDecimal();
+                newMyTrade.Volume= trdStr[4].ToDecimal();
                 Enum.TryParse(trdStr[5], out newMyTrade.Side);
-                newMyTrade.Time= Convert.ToDateTime(trdStr[6]);
+                newMyTrade.Time= Convert.ToDateTime(trdStr[6], CultureInfo.InvariantCulture);
 
                 if (MyTradeEvent != null)
                 {
@@ -668,6 +711,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
         }
 
         /// <summary>
+		/// parsing incoming messages about orders
         /// разбор входящих сообщений о ордерах
         /// </summary>
         private void LoadOrders(string message)
@@ -735,16 +779,16 @@ namespace OsEngine.Market.Servers.NinjaTrader
                 newOrder.NumberUser = Convert.ToInt32(ordStr[0]);
                 newOrder.NumberMarket= ordStr[1];
                 newOrder.SecurityNameCode = ordStr[2];
-                newOrder.Volume = Convert.ToDecimal(ordStr[3]);
-                newOrder.VolumeExecute = Convert.ToDecimal(ordStr[4]);
-                newOrder.Price = Convert.ToDecimal(ordStr[5]);
+                newOrder.Volume = ordStr[3].ToDecimal();
+                newOrder.VolumeExecute = ordStr[4].ToDecimal();
+                newOrder.Price = ordStr[5].ToDecimal();
                 newOrder.PortfolioNumber = ordStr[6];
                 Enum.TryParse(ordStr[7], out newOrder.Side);
 
                 OrderStateType state;
                 Enum.TryParse(ordStr[8], out state);
                 newOrder.State = state;
-                newOrder.TimeCallBack = Convert.ToDateTime(ordStr[9]);
+                newOrder.TimeCallBack = Convert.ToDateTime(ordStr[9], CultureInfo.InvariantCulture);
 
                 if (MyOrderEvent != null)
                 {
@@ -754,6 +798,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
         }
 
         /// <summary>
+        /// parsing incoming messages about list of securities
         /// разбор входящих сообщений о списке бумаг
         /// </summary>
         private void LoadSecurities(string message)
@@ -790,14 +835,33 @@ namespace OsEngine.Market.Servers.NinjaTrader
                     newSecurity.NameFull = sec[0];
                     newSecurity.NameId = sec[1];
                     newSecurity.NameClass = sec[2];
-                    newSecurity.PriceStep = Convert.ToDecimal(sec[3].Replace(",", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
-                    newSecurity.PriceStepCost = Convert.ToDecimal(sec[4].Replace(",", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
+                    newSecurity.PriceStep =
+                            sec[3].ToDecimal();
+                    newSecurity.PriceStepCost =
+                            sec[4].ToDecimal();
+                    newSecurity.Lot = 1;
+
+                    if (newSecurity.NameClass == "Stock")
+                    {
+                        newSecurity.SecurityType = SecurityType.Stock;
+                    }
+                    else if (newSecurity.NameClass == "Future")
+                    {
+                        newSecurity.SecurityType = SecurityType.Futures;
+                    }
+                    else if (newSecurity.NameClass == "Index")
+                    {
+                        newSecurity.SecurityType = SecurityType.Index;
+                    }
+                    else if (newSecurity.NameClass == "Forex")
+                    {
+                        newSecurity.SecurityType = SecurityType.CurrencyPair;
+                    }
                 }
                 catch (Exception)
                 {
 
                 }
-
 
                 securities.Add(newSecurity);
             }
@@ -809,6 +873,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
         }
 
         /// <summary>
+		/// parsing incoming messages about portfolios
         /// разбор входящих сообощений о портфелях
         /// </summary>
         private void LoadPortfoliosOnStart(string message)
@@ -827,7 +892,8 @@ namespace OsEngine.Market.Servers.NinjaTrader
                 result.Append(newAccount + "&");
             }*/
 
-            List<Portfolio> portfolios = new List<Portfolio>();
+            if(_portfolios == null)
+            { _portfolios = new List<Portfolio>();}
 
             string[] securityArray = message.Split('&');
 
@@ -835,16 +901,21 @@ namespace OsEngine.Market.Servers.NinjaTrader
             {
                 Portfolio newPortfolio = new Portfolio();
                 newPortfolio.Number = securityArray[i];
-                portfolios.Add(newPortfolio);
+
+                if (_portfolios.Find(port => port.Number == newPortfolio.Number) == null)
+                {
+                    _portfolios.Add(newPortfolio);
+                }
             }
 
             if (UpdatePortfolio != null)
             {
-                UpdatePortfolio(portfolios);
+                UpdatePortfolio(_portfolios);
             }
         }
 
         /// <summary>
+		/// parsing incoming messages about trades
         /// разбор входящих сообощений о трейдах
         /// </summary>
         private void LoadTrades(string str)
@@ -873,14 +944,10 @@ namespace OsEngine.Market.Servers.NinjaTrader
                 newTrade.SecurityNameCode = tradeInArray[0];
                 newTrade.Side = Side.Buy;
                 newTrade.Price =
-                    Convert.ToDecimal(
-                        tradeInArray[1].Replace(",", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator),
-                        CultureInfo.InvariantCulture);
+                        tradeInArray[1].ToDecimal();
                 newTrade.Volume =
-                    Convert.ToDecimal(
-                        tradeInArray[2].Replace(",", CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator),
-                        CultureInfo.InvariantCulture);
-                newTrade.Time = Convert.ToDateTime(tradeInArray[3]);
+                        tradeInArray[2].ToDecimal();
+                newTrade.Time = Convert.ToDateTime(tradeInArray[3], CultureInfo.InvariantCulture);
 
                 if (NewTradesEvent != null)
                 {
@@ -889,51 +956,62 @@ namespace OsEngine.Market.Servers.NinjaTrader
             }
         }
 
+		// outgoing events
         // исходящие события
-
+        
         /// <summary>
+		/// my new orders
         /// новые мои ордера
         /// </summary>
         public event Action<Order> MyOrderEvent;
 
         /// <summary>
+		/// my new trades
         /// новые мои сделки
         /// </summary>
         public event Action<MyTrade> MyTradeEvent;
 
         /// <summary>
+		/// update portfolio event
         /// событие обновления портфеля
         /// </summary>
         public event Action<List<Portfolio>> UpdatePortfolio;
 
         /// <summary>
+		/// new securities in the system 
         /// новые бумаги в системе
         /// </summary>
         public event Action<List<Security>> UpdateSecuritiesEvent;
 
         /// <summary>
+		/// updated depth
         /// обновился стакан
         /// </summary>
         public event Action<MarketDepth> UpdateMarketDepth;
 
         /// <summary>
+		/// updated ticks
         /// обновились тики
         /// </summary>
         public event Action<Trade> NewTradesEvent;
 
         /// <summary>
+		/// connection to API established
         /// соединение с BitStamp API установлено
         /// </summary>
         public event Action Connected;
 
         /// <summary>
+		/// connection to API lost
         /// соединение с BitStamp API разорвано
         /// </summary>
         public event Action Disconnected;
 
+		// log messages
         // сообщения для лога
 
         /// <summary>
+		/// add a new log message
         /// добавить в лог новое сообщение
         /// </summary>
         private void SendLogMessage(string message, LogMessageType type)
@@ -945,6 +1023,7 @@ namespace OsEngine.Market.Servers.NinjaTrader
         }
 
         /// <summary>
+		/// send exeptions
         /// отправляет исключения
         /// </summary>
         public event Action<string, LogMessageType> LogMessageEvent;

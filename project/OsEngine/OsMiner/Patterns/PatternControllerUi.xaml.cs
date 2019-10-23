@@ -7,7 +7,9 @@ using System.Windows.Forms;
 using System.Windows.Forms.Integration;
 using System.Windows.Input;
 using OsEngine.Entity;
+using OsEngine.Language;
 using OsEngine.Logging;
+using OsEngine.Market.Servers.Miner;
 using OsEngine.Market.Servers.Tester;
 using ContextMenu = System.Windows.Forms.ContextMenu;
 using MenuItem = System.Windows.Forms.MenuItem;
@@ -16,6 +18,7 @@ using MouseEventArgs = System.Windows.Forms.MouseEventArgs;
 namespace OsEngine.OsMiner.Patterns
 {
     /// <summary>
+    /// Interaction Logic for PatternControllerUi.xaml
     /// Логика взаимодействия для PatternControllerUi.xaml
     /// </summary>
     public partial class PatternControllerUi
@@ -33,11 +36,11 @@ namespace OsEngine.OsMiner.Patterns
 
             InitializeTabClosePosition();
 
-            _gridPatternsToOpen = new DataGridView();
+            _gridPatternsToOpen = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.FullRowSelect, DataGridViewAutoSizeRowsMode.None);
             _gridPatternsToOpen.MouseClick += _gridPatternsToOpen_MouseClick;
             _gridPatternsToOpen.CellValueChanged += _gridPatternsToOpen_CellValueChanged;
 
-            _gridPatternsToClose = new DataGridView();
+            _gridPatternsToClose = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.FullRowSelect, DataGridViewAutoSizeRowsMode.None);
             _gridPatternsToClose.MouseClick += _gridPatternsToClose_MouseClick;
             _gridPatternsToClose.CellValueChanged += _gridPatternsToClose_CellValueChanged;
 
@@ -49,11 +52,68 @@ namespace OsEngine.OsMiner.Patterns
 
             InitializeTabPatternsSearch();
 
-
-
             InitializeMiningTab();
+
+            Local();
         }
 
+        private void Local()
+        {
+            Title = OsLocalization.Miner.Label27;
+            ButtonReload.Content = OsLocalization.Miner.Label28;
+            ButtonReload.ToolTip = OsLocalization.Miner.Label29;
+            Label30.Content = OsLocalization.Miner.Label30;
+            Label31.Content = OsLocalization.Miner.Label31;
+            ButtonTempPatternJournal.Content = OsLocalization.Miner.Label32;
+            ButtonTempPatternJournal.ToolTip = OsLocalization.Miner.Label33;
+            TabItemData.Header = OsLocalization.Miner.Label34;
+            Label35.Content = OsLocalization.Miner.Label35;
+            ComboBoxDataSourseType.ToolTip = OsLocalization.Miner.Label36;
+            Label37.Content = OsLocalization.Miner.Label37;
+            ButtonSetDataFromPath.Content = OsLocalization.Miner.Label38;
+            TabItemOpenPos.Header = OsLocalization.Miner.Label39;
+            Label40.Content = OsLocalization.Miner.Label40;
+            Label41.Content = OsLocalization.Miner.Label41;
+            ComboBoxSideInter.ToolTip = OsLocalization.Miner.Label42;
+            Label43.Content = OsLocalization.Miner.Label43;
+            TextBoxWeigthToInter.ToolTip = OsLocalization.Miner.Label44;
+            TabItemClosePos.Header = OsLocalization.Miner.Label45;
+            CheckBoxStopOrderIsOn.Content = OsLocalization.Miner.Label46;
+            CheckBoxProfitOrderIsOn.Content = OsLocalization.Miner.Label47;
+            CheckBoxExitFromSomeCandlesIsOn.Content = OsLocalization.Miner.Label48;
+            CheckBoxTrailingStopIsOn.Content = OsLocalization.Miner.Label49;
+            Label402.Content = OsLocalization.Miner.Label40;
+            Label50.Content = OsLocalization.Miner.Label50;
+            TabItemSearch.Header = OsLocalization.Miner.Label52;
+            Label53.Content = OsLocalization.Miner.Label53;
+            Label54.Content = OsLocalization.Miner.Label54;
+            Label55.Content = OsLocalization.Miner.Label55;
+            ButtonReloadTempPattern.Content = OsLocalization.Miner.Label28;
+            ButtonSaveTempPattern.Content = OsLocalization.Miner.Label56;
+            Label57.Content = OsLocalization.Miner.Label57;
+            Label58.Content = OsLocalization.Miner.Label58;
+
+            Label59.Content = OsLocalization.Miner.Label59;
+            Label60.Content = OsLocalization.Miner.Label60;
+            Label61.Content = OsLocalization.Miner.Label61;
+            ButtonJournals.Content = OsLocalization.Miner.Label62;
+            TabItemCandlePatterns.Header = OsLocalization.Miner.Label63;
+            TabItemVolumePatterns.Header = OsLocalization.Miner.Label64;
+            TabItemTimePattern.Header = OsLocalization.Miner.Label65;
+            TabItemIndicatorPatterns.Header = OsLocalization.Miner.Label66;
+            Label67.Content = OsLocalization.Miner.Label67;
+            Label68.Content = OsLocalization.Miner.Label68;
+            Label67_2.Content = OsLocalization.Miner.Label67;
+            Label69.Content = OsLocalization.Miner.Label69;
+            Label70.Content = OsLocalization.Miner.Label70;
+            Label71.Content = OsLocalization.Miner.Label71;
+            Label72.Content = OsLocalization.Miner.Label72;
+            Label67_3.Content = OsLocalization.Miner.Label67;
+            Label68_2.Content = OsLocalization.Miner.Label68;
+        }
+
+
+// Auto pattern search
 // Авто поиск паттернов
 
         private void InitializeMiningTab()
@@ -72,8 +132,7 @@ namespace OsEngine.OsMiner.Patterns
         {
             try
             {
-                _pattern.MiningProfit = Convert.ToDecimal(TextBoxMiningProfit.Text.Replace(",",
-                    CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
+                _pattern.MiningProfit = TextBoxMiningProfit.Text.ToDecimal();
             }
             catch (Exception)
             {
@@ -99,8 +158,7 @@ namespace OsEngine.OsMiner.Patterns
         {
             try
             {
-                _pattern.MiningMo = Convert.ToDecimal(TextBoxMiningMo.Text.Replace(",",
-                    CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
+                _pattern.MiningMo = TextBoxMiningMo.Text.ToDecimal();
             }
             catch (Exception)
             {
@@ -124,6 +182,7 @@ namespace OsEngine.OsMiner.Patterns
             _pattern.ShowTestResults();
         }
 
+// pattern search tab
 // вкладка поиска паттернов
 
         void InitializeTabPatternsSearch()
@@ -154,8 +213,8 @@ namespace OsEngine.OsMiner.Patterns
         {
             try
             {
-                _pattern.ExpandToTempPattern = Convert.ToDecimal(TextBoxExpandToTempPattern.Text.Replace(",",
-                    CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
+                _pattern.ExpandToTempPattern = 
+                    TextBoxExpandToTempPattern.Text.ToDecimal();
             }
             catch (Exception)
             {
@@ -180,8 +239,8 @@ namespace OsEngine.OsMiner.Patterns
         {
             try
             {
-                _pattern.WeigthToTempPattern = Convert.ToDecimal(TextBoxWeigthToTempPattern.Text.Replace(",",
-                    CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
+                _pattern.WeigthToTempPattern = 
+                    TextBoxWeigthToTempPattern.Text.ToDecimal();
             }
             catch (Exception)
             {
@@ -229,6 +288,7 @@ namespace OsEngine.OsMiner.Patterns
             PaintGridPatternsToClose();
         }
 
+// individual tabs patterns
 // индивидуальные вкладки паттернов
 
         void TabControlTypePatternsToFind_MouseUp(object sender, MouseButtonEventArgs e)
@@ -280,6 +340,8 @@ namespace OsEngine.OsMiner.Patterns
             {
                 TextBoxCandlePatternLength.Text = pattern.Length.ToString();
             }
+            _pattern.GetPatternToIndex();
+            _pattern.Save();
         }
 
         void ComboBoxTypeWatchCandlePattern_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -311,6 +373,7 @@ namespace OsEngine.OsMiner.Patterns
             {
                 TextBoxVolumePatternLength.Text = pattern.Length.ToString();
             }
+            _pattern.GetPatternToIndex();
             _pattern.Save();
         }
 
@@ -387,10 +450,10 @@ namespace OsEngine.OsMiner.Patterns
             {
                 TextBoxPatternIndicatorLenght.Text = pattern.Length.ToString();
             }
+            _pattern.GetPatternToIndex();
             _pattern.Save();
         }
-
-
+// tab opening position VARIABLES
 // вкладка открытие позиции ПЕРЕМЕННЫЕ
 
         void InitializeTabOpenPosition()
@@ -448,10 +511,15 @@ namespace OsEngine.OsMiner.Patterns
 
         void TextBoxWeigthToInter_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (TextBoxWeigthToInter.Text == "" ||
+                TextBoxWeigthToInter.Text == "0," ||
+                TextBoxWeigthToInter.Text == "0.")
+            {
+                return;
+            } 
             try
             {
-                _pattern.WeigthToInter = Convert.ToDecimal(TextBoxWeigthToInter.Text.Replace(",",
-                    CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
+                _pattern.WeigthToInter = TextBoxWeigthToInter.Text.ToDecimal();
             }
             catch (Exception)
             {
@@ -477,32 +545,19 @@ namespace OsEngine.OsMiner.Patterns
             _pattern.Save();
         }
 
+// tab opening position WORK WITH GRID
 // вкладка открытие позиции РАБОТА С ГРИДАМИ
 
         private DataGridView _gridPatternsToOpen;
 
         void CreateGridPatternsGrid(DataGridView grid, WindowsFormsHost host)
         {
-            
-            grid.AllowUserToOrderColumns = true;
-            grid.AllowUserToResizeRows = true;
-            grid.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
-            grid.AllowUserToDeleteRows = false;
-            grid.AllowUserToAddRows = false;
-            grid.RowHeadersVisible = false;
-            grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            grid.MultiSelect = false;
-
-            DataGridViewCellStyle style = new DataGridViewCellStyle();
-            style.Alignment = DataGridViewContentAlignment.TopLeft;
-            style.WrapMode = DataGridViewTriState.True;
-            grid.DefaultCellStyle = style;
 
             DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
-            cell0.Style = style;
+            cell0.Style = grid.DefaultCellStyle;
 
             DataGridViewComboBoxCell cellComboBox = new DataGridViewComboBoxCell();
-            cellComboBox.Style = style;
+            cellComboBox.Style = grid.DefaultCellStyle;
 
             DataGridViewColumn column0 = new DataGridViewColumn();
             column0.CellTemplate = cell0;
@@ -514,21 +569,21 @@ namespace OsEngine.OsMiner.Patterns
 
             DataGridViewColumn column1 = new DataGridViewColumn();
             column1.CellTemplate = cell0;
-            column1.HeaderText = @"Тип";
+            column1.HeaderText = OsLocalization.Miner.Label73;
             column1.ReadOnly = true;
             column1.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             grid.Columns.Add(column1);
 
             DataGridViewColumn column2 = new DataGridViewColumn();
             column2.CellTemplate = cell0;
-            column2.HeaderText = @"Вес";
+            column2.HeaderText = OsLocalization.Miner.Label54;
             column2.ReadOnly = false;
             column2.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             grid.Columns.Add(column2);
 
             DataGridViewColumn column4 = new DataGridViewColumn();
             column4.CellTemplate = cell0;
-            column4.HeaderText = @"Узнаваемость";
+            column4.HeaderText  = OsLocalization.Miner.Label55;
             column4.ReadOnly = false;
             column4.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             grid.Columns.Add(column4);
@@ -579,11 +634,9 @@ namespace OsEngine.OsMiner.Patterns
             {
                 for (int i = 0; i < _gridPatternsToOpen.Rows.Count; i++)
                 {
-                    _pattern.PatternsToOpen[i].Weigth = Convert.ToDecimal(_gridPatternsToOpen.Rows[i].Cells[2].Value.ToString().Replace(",",
-                        CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
+                    _pattern.PatternsToOpen[i].Weigth = _gridPatternsToOpen.Rows[i].Cells[2].Value.ToString().ToDecimal();
 
-                    _pattern.PatternsToOpen[i].Expand = Convert.ToDecimal(_gridPatternsToOpen.Rows[i].Cells[3].Value.ToString().Replace(",",
-                        CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
+                    _pattern.PatternsToOpen[i].Expand = _gridPatternsToOpen.Rows[i].Cells[3].Value.ToString().ToDecimal();
                 }
                 _pattern.Save();
             }
@@ -609,10 +662,10 @@ namespace OsEngine.OsMiner.Patterns
             {
                 MenuItem[] items = new MenuItem[2];
 
-                items[0] = new MenuItem { Text = @"Добавить" };
+                items[0] = new MenuItem { Text = OsLocalization.Miner.Message6};
                 items[0].Click += GridPatternsToOpenAdd_Click;
 
-                items[1] = new MenuItem { Text = @"Удалить" };
+                items[1] = new MenuItem { Text = OsLocalization.Miner.Message7};
                 items[1].Click += GridPatternsToOpenRemove_Click;
 
                 ContextMenu menu = new ContextMenu(items);
@@ -642,8 +695,8 @@ namespace OsEngine.OsMiner.Patterns
             PaintGridPatternsToOpen();
         }
 
-
-//вкладка закрытие позиции ПЕРЕМЕННЫЕ
+// tab position closing variable
+// вкладка закрытие позиции ПЕРЕМЕННЫЕ
 
         void InitializeTabClosePosition()
         {
@@ -677,27 +730,19 @@ namespace OsEngine.OsMiner.Patterns
 
         void TextBoxWeigthToExit_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (TextBoxWeigthToExit.Text == "" ||
+                TextBoxWeigthToExit.Text == "0," ||
+                TextBoxWeigthToExit.Text == "0.")
+            {
+                return;
+            }
             try
             {
-                _pattern.WeigthToExit = Convert.ToDecimal(TextBoxWeigthToExit.Text.Replace(",",
-                    CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
+                _pattern.WeigthToExit = TextBoxWeigthToExit.Text.ToDecimal();
             }
             catch (Exception)
             {
                 TextBoxWeigthToExit.Text = _pattern.WeigthToExit.ToString(CultureInfo.InvariantCulture);
-            }
-            _pattern.Save();
-        }
-
-        void TextBoxTreilingStopValue_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            try
-            {
-                _pattern.TreilingStopValue = Convert.ToInt32(TextBoxTreilingStopValue.Text);
-            }
-            catch (Exception)
-            {
-                TextBoxTreilingStopValue.Text = _pattern.TreilingStopValue.ToString();
             }
             _pattern.Save();
         }
@@ -715,11 +760,36 @@ namespace OsEngine.OsMiner.Patterns
             _pattern.Save();
         }
 
-        void TextBoxProfitOrderValue_TextChanged(object sender, TextChangedEventArgs e)
+        void TextBoxTreilingStopValue_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (TextBoxTreilingStopValue.Text == "" ||
+                TextBoxTreilingStopValue.Text == "0," ||
+                TextBoxTreilingStopValue.Text == "0.")
+            {
+                return;
+            }
             try
             {
-                _pattern.ProfitOrderValue = Convert.ToInt32(TextBoxProfitOrderValue.Text);
+                _pattern.TreilingStopValue = TextBoxTreilingStopValue.Text.ToDecimal();
+            }
+            catch (Exception)
+            {
+                TextBoxTreilingStopValue.Text = _pattern.TreilingStopValue.ToString();
+            }
+            _pattern.Save();
+        }
+
+        void TextBoxProfitOrderValue_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (TextBoxProfitOrderValue.Text == "" ||
+                TextBoxProfitOrderValue.Text == "0," ||
+                TextBoxProfitOrderValue.Text == "0.")
+            {
+                return;
+            }
+            try
+            {
+                _pattern.ProfitOrderValue = TextBoxProfitOrderValue.Text.ToDecimal();
             }
             catch (Exception)
             {
@@ -730,9 +800,15 @@ namespace OsEngine.OsMiner.Patterns
 
         void TextBoxStopOrderValue_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (TextBoxStopOrderValue.Text == "" ||
+                TextBoxStopOrderValue.Text == "0," ||
+                TextBoxStopOrderValue.Text == "0.")
+            {
+                return;
+            }
             try
             {
-                _pattern.StopOrderValue = Convert.ToInt32(TextBoxStopOrderValue.Text);
+                _pattern.StopOrderValue = TextBoxStopOrderValue.Text.ToDecimal();
             }
             catch (Exception)
             {
@@ -777,7 +853,7 @@ namespace OsEngine.OsMiner.Patterns
             _pattern.Save();
         }
 
-
+// tab position closing WORKS WITH GRIDES
 // вкладка закрытие позиции РАБОТА С ГРИДАМИ
 
         private DataGridView _gridPatternsToClose;
@@ -806,11 +882,11 @@ namespace OsEngine.OsMiner.Patterns
             {
                 for (int i = 0; i < _gridPatternsToClose.Rows.Count; i++)
                 {
-                    _pattern.PatternsToClose[i].Weigth = Convert.ToDecimal(_gridPatternsToClose.Rows[i].Cells[2].Value.ToString().Replace(",",
-                        CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
+                    _pattern.PatternsToClose[i].Weigth = 
+                        _gridPatternsToClose.Rows[i].Cells[2].Value.ToString().ToDecimal();
 
-                    _pattern.PatternsToClose[i].Expand = Convert.ToDecimal(_gridPatternsToClose.Rows[i].Cells[3].Value.ToString().Replace(",",
-                        CultureInfo.InvariantCulture.NumberFormat.NumberDecimalSeparator), CultureInfo.InvariantCulture);
+                    _pattern.PatternsToClose[i].Expand = 
+                        _gridPatternsToClose.Rows[i].Cells[3].Value.ToString().ToDecimal();
                 }
                 _pattern.Save();
             }
@@ -836,10 +912,10 @@ namespace OsEngine.OsMiner.Patterns
             {
                 MenuItem[] items = new MenuItem[2];
 
-                items[0] = new MenuItem { Text = @"Добавить" };
+                items[0] = new MenuItem { Text = OsLocalization.Miner.Message6 };
                 items[0].Click += GridPatternsToCloseAdd_Click;
 
-                items[1] = new MenuItem { Text = @"Удалить" };
+                items[1] = new MenuItem { Text = OsLocalization.Miner.Message7 };
                 items[1].Click += GridPatternsToCloseRemove_Click;
 
                 ContextMenu menu = new ContextMenu(items);
@@ -869,6 +945,7 @@ namespace OsEngine.OsMiner.Patterns
             PaintGridPatternsToClose();
         }
 
+// DATE tab
 // вкладка ДАТА
 
         void InitializeTabDataSeries()
@@ -911,6 +988,7 @@ namespace OsEngine.OsMiner.Patterns
         }
 
         /// <summary>
+        /// data source has changed. Folder or Seth
         /// источник данных изменился. Папка или Сет 
         /// </summary>
         void ComboBoxDataSourseType_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -921,6 +999,7 @@ namespace OsEngine.OsMiner.Patterns
         }
 
         /// <summary>
+        /// data set has changed
         /// сет данных изменился
         /// </summary>
         void ComboBoxSets_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -930,89 +1009,33 @@ namespace OsEngine.OsMiner.Patterns
         }
 
         /// <summary>
+        /// test server
         /// тестовый сервер
         /// </summary>
         private OsMinerServer _dataServer;
 
         /// <summary>
+        /// tool table
         /// таблица с инструментами
         /// </summary>
         private DataGridView _myGridView;
 
         /// <summary>
+        /// create a table with tools
         /// создать таблицу с инструментами
         /// </summary>
         private void CreateGridDataServer()
         {
-            _myGridView = new DataGridView();
+            _myGridView = DataGridFactory.GetDataGridDataSource();
+
             HostSecurities.Child = _myGridView;
             HostSecurities.Child.Show();
-            _myGridView.AllowUserToOrderColumns = false;
-            _myGridView.AllowUserToResizeRows = false;
-            _myGridView.AllowUserToDeleteRows = false;
-            _myGridView.AllowUserToAddRows = false;
-            _myGridView.RowHeadersVisible = false;
-            _myGridView.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            _myGridView.MultiSelect = false;
-
-            DataGridViewCellStyle style = new DataGridViewCellStyle();
-            style.Alignment = DataGridViewContentAlignment.BottomRight;
-
-            DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
-            cell0.Style = style;
-
-            DataGridViewColumn column2 = new DataGridViewColumn();
-            column2.CellTemplate = cell0;
-            column2.HeaderText = @"Файл";
-            column2.ReadOnly = true;
-            column2.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
-            _myGridView.Columns.Add(column2);
-
-            DataGridViewColumn column0 = new DataGridViewColumn();
-            column0.CellTemplate = cell0;
-            column0.HeaderText = @"Бумага";
-            column0.ReadOnly = true;
-            column0.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
-            _myGridView.Columns.Add(column0);
-
-            DataGridViewColumn column = new DataGridViewColumn();
-            column.CellTemplate = cell0;
-            column.HeaderText = @"Таймфрейм";
-            column.ReadOnly = true;
-            column.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
-            _myGridView.Columns.Add(column);
-
-            DataGridViewColumn column1 = new DataGridViewColumn();
-            column1.CellTemplate = cell0;
-            column1.HeaderText = @"Шаг цены";
-            column1.ReadOnly = true;
-            column1.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
-            _myGridView.Columns.Add(column1);
-
-            DataGridViewColumn column3 = new DataGridViewColumn();
-            column3.CellTemplate = cell0;
-            column3.HeaderText = @"Дата начала";
-            column3.ReadOnly = true;
-            column3.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
-            _myGridView.Columns.Add(column3);
-
-            DataGridViewColumn column4 = new DataGridViewColumn();
-            column4.CellTemplate = cell0;
-            column4.HeaderText = @"Дата конца";
-            column4.ReadOnly = true;
-            column4.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-
-            _myGridView.Columns.Add(column4);
 
             _myGridView.Rows.Add();
         }
 
         /// <summary>
+        /// draw a table with tools
         /// прорисовать таблицу с инструментами
         /// </summary>
         private void PaintGridDataSeries()

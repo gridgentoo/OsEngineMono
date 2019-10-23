@@ -1,14 +1,17 @@
 ﻿/*
+ *Your rights to use the code are governed by this license https://github.com/AlexWan/OsEngine/blob/master/LICENSE
  *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
 using System;
 using System.Windows;
+using OsEngine.Language;
 using OsEngine.Logging;
 
 namespace OsEngine.Market.Servers.Finam
 {
     /// <summary>
+    /// Interaction logic for FinamServerUi.xaml
     /// Логика взаимодействия для FinamServerUi.xaml
     /// </summary>
     public partial class FinamServerUi
@@ -24,6 +27,10 @@ namespace OsEngine.Market.Servers.Finam
             LabelStatus.Content = _server.ServerStatus;
             _server.ConnectStatusChangeEvent += _server_ConnectStatusChangeEvent;
             log.StartPaint(Host);
+            Label41.Content = OsLocalization.Market.Label41;
+            Label21.Content = OsLocalization.Market.Label21;
+            ButtonConnect.Content = OsLocalization.Market.ButtonConnect;
+            ButtonAbort.Content = OsLocalization.Market.ButtonDisconnect;
         }
 
         void _server_ConnectStatusChangeEvent(string state)

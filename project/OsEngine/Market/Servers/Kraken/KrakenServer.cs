@@ -1,4 +1,5 @@
 ﻿/*
+ *Your rights to use the code are governed by this license https://github.com/AlexWan/OsEngine/blob/master/LICENSE
  *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
@@ -9,6 +10,7 @@ using System.Globalization;
 using System.IO;
 using System.Threading;
 using OsEngine.Entity;
+using OsEngine.Language;
 using OsEngine.Logging;
 using OsEngine.Market.Servers.Entity;
 using OsEngine.Market.Servers.Kraken.KrakenEntity;
@@ -19,9 +21,11 @@ namespace OsEngine.Market.Servers.Kraken
     public class KrakenServer: IServer
     {
 
-//сервис. менеджмент первичных настроек
+        //service. primary management
+        //сервис. менеджмент первичных настроек
 
         /// <summary>
+        /// constructor
         ///  конструктор
         /// </summary>
         public KrakenServer(bool neadLoadTrades)
@@ -65,7 +69,7 @@ namespace OsEngine.Market.Servers.Kraken
             ordersExecutor.IsBackground = true;
             ordersExecutor.Start();
 
-            _logMaster = new Log("KrakenServer");
+            _logMaster = new Log("KrakenServer", StartProgram.IsOsTrader);
             _logMaster.Listen(this);
 
             _serverStatusNead = ServerConnectStatus.Disconnect;
@@ -82,16 +86,19 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// public access key to Kraken
         /// публичный ключ доступа к Кракену
         /// </summary>
         public string PublicKey;
 
         /// <summary>
+        /// private access key to Kraken
         /// приватный ключ доступа к Кракену
         /// </summary>
         public string PrivateKey;
 
         /// <summary>
+        /// downloaded data type
         /// тип загружаемых данных
         /// </summary>
         public KrakenDateType LoadDateType
@@ -109,6 +116,7 @@ namespace OsEngine.Market.Servers.Kraken
         private KrakenDateType _loadDateType;
 
         /// <summary>
+        /// take server type
         /// взять тип сервера
         /// </summary>
         public ServerType ServerType { get; set; }
@@ -116,15 +124,31 @@ namespace OsEngine.Market.Servers.Kraken
         public string LeverageType;
 
         /// <summary>
-        /// вызвать окно настроек
+        /// show settings
+        /// показать настройки
         /// </summary>
         public void ShowDialog()
         {
-            KrakenServerUi ui = new KrakenServerUi(this, _logMaster);
-            ui.Show();
+            if (_ui == null)
+            {
+                _ui = new KrakenServerUi(this, _logMaster);
+                _ui.Show();
+                _ui.Closing += (sender, args) => { _ui = null; };
+            }
+            else
+            {
+                _ui.Activate();
+            }
         }
 
         /// <summary>
+        /// item control window
+        /// окно управления элемента
+        /// </summary>
+        private KrakenServerUi _ui;
+
+        /// <summary>
+        /// download settings from the file
         /// загрузить настройки из файла
         /// </summary>
         private void Load()
@@ -157,6 +181,7 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// save settings in the file
         /// сохранить настройки в файл
         /// </summary>
         public void Save()
@@ -185,6 +210,7 @@ namespace OsEngine.Market.Servers.Kraken
             }
         }
 
+        // proxi storage
         // хранилище прокси
 
         public List<ProxyHolder> Proxies = new List<ProxyHolder>();
@@ -247,15 +273,17 @@ namespace OsEngine.Market.Servers.Kraken
             }
         }
 
+        // tick storage
+        //хранилище тиков
 
-//хранилище тиков
-        
         /// <summary>
+        /// tick storage
         /// хранилище тиков
         /// </summary>
         private ServerTickStorage _tickStorage;
 
         /// <summary>
+        /// number of days ago, tick data to save
         /// количество дней назад, тиковые данные по которым нужно сохранять
         /// </summary>
         public int CountDaysTickNeadToSave
@@ -270,6 +298,7 @@ namespace OsEngine.Market.Servers.Kraken
         private int _countDaysTickNeadToSave;
 
         /// <summary>
+        /// whether need to save ticks
         /// нужно ли сохранять тики 
         /// </summary>
         public bool NeadToSaveTicks
@@ -283,9 +312,11 @@ namespace OsEngine.Market.Servers.Kraken
         }
         private bool _neadToSaveTicks;
 
-//статус сервера
+        // server status
+        //статус сервера
 
         /// <summary>
+        /// server status
         /// статус сервера
         /// </summary>
         public ServerConnectStatus ServerStatus
@@ -296,7 +327,7 @@ namespace OsEngine.Market.Servers.Kraken
                 if (value != _serverConnectStatus)
                 {
                     _serverConnectStatus = value;
-                    SendLogMessage(_serverConnectStatus + " Изменилось состояние соединения", LogMessageType.Connect);
+                    SendLogMessage(_serverConnectStatus + OsLocalization.Market.Message7, LogMessageType.Connect);
                     if (ConnectStatusChangeEvent != null)
                     {
                         ConnectStatusChangeEvent(_serverConnectStatus.ToString());
@@ -307,19 +338,23 @@ namespace OsEngine.Market.Servers.Kraken
         private ServerConnectStatus _serverConnectStatus;
 
         /// <summary>
+        /// needed server status. Need a thread that monitors the connection. Depending on this field controls the connection
         /// нужный статус сервера. Нужен потоку который следит за соединением
         /// В зависимости от этого поля управляет соединением
         /// </summary>
         private ServerConnectStatus _serverStatusNead;
 
         /// <summary>
+        /// called when server status changes
         /// вызывается когда статус соединения изменяется
         /// </summary>
         public event Action<string> ConnectStatusChangeEvent;
 
+// connect / disconnect
 //подключение / отключение
 
         /// <summary>
+        /// start server
         /// запустить сервер
         /// </summary>
         public void StartServer()
@@ -328,6 +363,7 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// stop server
         /// остановить сервер
         /// </summary>
         public void StopServer()
@@ -336,6 +372,7 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// connection established
         /// соединение установлено
         /// </summary>
         void ConnectionSucsess()
@@ -351,6 +388,7 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// connection lost
         /// соединение разорвано
         /// </summary>
         void ConnectionFail()
@@ -370,24 +408,29 @@ namespace OsEngine.Market.Servers.Kraken
             }
         }
 
-//работа потока следящего за соединением и заказывающего первичные данные
+        //work of the connection tracking and ordering primary data
+        //работа потока следящего за соединением и заказывающего первичные данные
 
         /// <summary>
+        /// client for connection to Kraken
         /// клиент для подключения к кракену
         /// </summary>
         private KrakenServerClient _krakenClient;
 
         /// <summary>
-        /// последнее время включения сервера
+        /// server time of last starting
+        /// время последнего старта сервера
         /// </summary>
-        private DateTime _lastStartServerTime;
+        public DateTime LastStartServerTime { get; set; }
 
         /// <summary>
+        /// main thread that monitors the connection, loading portfolios and papers, sending data to up
         /// основной поток, следящий за подключением, загрузкой портфелей и бумаг, пересылкой данных на верх
         /// </summary>
         private Thread _threadPrime;
 
         /// <summary>
+        /// place where the connection is controlled. listen to data thread 
         /// место в котором контролируется соединение.
         /// опрашиваются потоки данных
         /// </summary>
@@ -404,7 +447,6 @@ namespace OsEngine.Market.Servers.Kraken
                     {
                         if (_krakenClient == null)
                         {
-                            SendLogMessage("Создаём коннектор", LogMessageType.System);
                             CreateNewServer();
                             continue;
                         }
@@ -414,7 +456,7 @@ namespace OsEngine.Market.Servers.Kraken
                         if (state == ServerConnectStatus.Disconnect
                             && _serverStatusNead == ServerConnectStatus.Connect)
                         {
-                            SendLogMessage("Запущена процедура активации подключения", LogMessageType.System);
+                            SendLogMessage(OsLocalization.Market.Message8, LogMessageType.System);
                             Connect();
                             continue;
                         }
@@ -422,7 +464,7 @@ namespace OsEngine.Market.Servers.Kraken
                         if (state == ServerConnectStatus.Connect
                             && _serverStatusNead == ServerConnectStatus.Disconnect)
                         {
-                            SendLogMessage("Запущена процедура отключения подключения", LogMessageType.System);
+                            SendLogMessage(OsLocalization.Market.Message9, LogMessageType.System);
                             Disconnect();
                             continue;
                         }
@@ -434,27 +476,25 @@ namespace OsEngine.Market.Servers.Kraken
 
                         if (_candleManager == null)
                         {
-                            SendLogMessage("Создаём менеджер свечей", LogMessageType.System);
+                            SendLogMessage(OsLocalization.Market.Message10, LogMessageType.System);
                             StartCandleManager();
                             continue;
                         }
 
                         if (Portfolios == null)
                         {
-                            SendLogMessage("Начинаем процедуру прослушивания сервера", LogMessageType.System);
                            _krakenClient.InizialazeListening();
                         }
 
                     }
                     catch (Exception error)
                     {
-                        SendLogMessage("КРИТИЧЕСКАЯ ОШИБКА. Реконнект", LogMessageType.Error);
                         SendLogMessage(error.ToString(), LogMessageType.Error);
                         ServerStatus = ServerConnectStatus.Disconnect;
-                        Dispose(); // очищаем данные о предыдущем коннекторе
+                        Dispose(); // clear the data about the previous connector / очищаем данные о предыдущем коннекторе
 
                         Thread.Sleep(5000);
-                        // переподключаемся
+                        // reconnect / переподключаемся
                         _threadPrime = new Thread(PrimeThreadArea);
                         _threadPrime.CurrentCulture = new CultureInfo("us-US");
                        // _threadPrime.IsBackground = true;
@@ -466,6 +506,7 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// create new connection
         /// создать новое подключение
         /// </summary>
         private void CreateNewServer()
@@ -478,7 +519,7 @@ namespace OsEngine.Market.Servers.Kraken
                 _krakenClient.LogMessageEvent += SendLogMessage;
                 _krakenClient.NewPortfolio += NewPortfolio;
                 _krakenClient.NewMyTradeEvent += _Client_NewMyTradeEvent;
-                _krakenClient.NewOrderEvent += _ibClient_NewOrderEvent;
+                _krakenClient.NewOrderEvent += _newOrderEvent;
                 _krakenClient.NewTradeEvent += AddTick;
                 _krakenClient.NewSecuritiesEvent += _krakenClient_NewSecuritiesEvent;
                 _krakenClient.NewMarketDepthEvent += _krakenClient_NewMarketDepthEvent;
@@ -489,29 +530,31 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// start connection process
         /// начать процесс подключения
         /// </summary>
         private void Connect()
         {
             if (string.IsNullOrWhiteSpace(PublicKey))
             {
-                SendLogMessage("Не указан публичный ключ.  Подключение прервано.", LogMessageType.Error);
+                SendLogMessage(OsLocalization.Market.Message65, LogMessageType.Error);
                 _serverStatusNead = ServerConnectStatus.Disconnect;
                 return;
             }
             if (string.IsNullOrEmpty(PrivateKey))
             {
-                SendLogMessage("Не указан приватный ключ. Подключение прервано.", LogMessageType.Error);
+                SendLogMessage(OsLocalization.Market.Message65, LogMessageType.Error);
                 _serverStatusNead = ServerConnectStatus.Disconnect;
                 return;
             }
 
             _krakenClient.Connect(PublicKey, PrivateKey);
-            _lastStartServerTime = DateTime.Now;
+            LastStartServerTime = DateTime.Now;
             Thread.Sleep(5000);
         }
 
         /// <summary>
+        /// suspend connection
         /// приостановить подключение
         /// </summary>
         private void Disconnect()
@@ -525,6 +568,7 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// start candle downloading
         /// запускает скачиватель свечек
         /// </summary>
         private void StartCandleManager()
@@ -538,6 +582,7 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// bring the program to the start. Clear all objects involved in connecting to the server
         /// привести программу к моменту запуска. Очистить все объекты участвующие в подключении к серверу
         /// </summary>
         [System.Runtime.ExceptionServices.HandleProcessCorruptedStateExceptionsAttribute]
@@ -550,7 +595,7 @@ namespace OsEngine.Market.Servers.Kraken
                 _krakenClient.LogMessageEvent -= SendLogMessage;
                 _krakenClient.NewPortfolio -= NewPortfolio;
                 _krakenClient.NewMyTradeEvent -= _Client_NewMyTradeEvent;
-                _krakenClient.NewOrderEvent -= _ibClient_NewOrderEvent;
+                _krakenClient.NewOrderEvent -= _newOrderEvent;
                 _krakenClient.NewTradeEvent -= AddTick;
                 _krakenClient.NewSecuritiesEvent -= _krakenClient_NewSecuritiesEvent;
                 _krakenClient.NewMarketDepthEvent -= _krakenClient_NewMarketDepthEvent;
@@ -572,58 +617,70 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// multi-threaded access locker to the server
         /// блокиратор многопоточного доступа к серверу
         /// </summary>
         private object _serverLocker = new object();
 
-//работа потока рассылки входящих данных
+        //work thread of incoming data
+        //работа потока рассылки входящих данных
 
         /// <summary>
+        /// queue of new oreders
         /// очередь новых ордеров
         /// </summary>
         private ConcurrentQueue<Order> _ordersToSend;
 
         /// <summary>
+        /// queue of ticks
         /// очередь тиков
         /// </summary>
         private ConcurrentQueue<List<OsEngine.Entity.Trade>> _tradesToSend;
 
         /// <summary>
+        /// queue of new portfolios
         /// очередь новых портфелей
         /// </summary>
         private ConcurrentQueue<List<Portfolio>> _portfolioToSend;
 
         /// <summary>
+        /// queue of new instruments
         /// очередь новых инструментов
         /// </summary>
         private ConcurrentQueue<List<Security>> _securitiesToSend;
 
         /// <summary>
+        /// queue of my new trades
         /// очередь новых моих сделок
         /// </summary>
         private ConcurrentQueue<MyTrade> _myTradesToSend;
 
         /// <summary>
+        /// queue of new time
         /// очередь нового времени
         /// </summary>
         private ConcurrentQueue<DateTime> _newServerTime;
 
         /// <summary>
+        /// queue of updated candle series
         /// очередь обновлённых серий свечек
         /// </summary>
         private ConcurrentQueue<CandleSeries> _candleSeriesToSend;
 
         /// <summary>
+        /// queue of new depths
         /// очередь новых стаканов
         /// </summary>
         private ConcurrentQueue<MarketDepth> _marketDepthsToSend;
 
         /// <summary>
+        /// queue of bid/ask updating on instrument
         /// очередь обновлений бида с аска по инструментам 
         /// </summary>
         private ConcurrentQueue<BidAskSender> _bidAskToSend;
 
         /// <summary>
+        /// thread operation method sending out incoming data
         /// метод работы потока рассылающий входящие данные
         /// </summary>
         private void SenderThreadArea()
@@ -757,9 +814,11 @@ namespace OsEngine.Market.Servers.Kraken
             }
         }
 
-// время сервера
+        // server time
+        // время сервера
 
         /// <summary>
+        /// server time
         /// время сервера
         /// </summary>
         public DateTime ServerTime
@@ -781,13 +840,16 @@ namespace OsEngine.Market.Servers.Kraken
         private DateTime _serverTime;
 
         /// <summary>
+        /// called when the server time changes
         /// вызывается когда изменяется время сервера
         /// </summary>
         public event Action<DateTime> TimeServerChangeEvent;
 
+// portfolios and positions
 // портфели и позиции
 
         /// <summary>
+        /// all accounts from system
         /// все счета в системе
         /// </summary>
         public List<Portfolio> Portfolios
@@ -797,6 +859,7 @@ namespace OsEngine.Market.Servers.Kraken
         private List<Portfolio> _portfolios;
 
         /// <summary>
+        /// take portfolio by number/name
         /// взять портфель по его номеру/имени
         /// </summary>
         public Portfolio GetPortfolioForName(string name)
@@ -818,11 +881,13 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// called when new portfolios appear in the system
         /// вызывается когда в системе появляются новые портфели
         /// </summary>
         public event Action<List<Portfolio>> PortfoliosChangeEvent;
 
         /// <summary>
+        /// incoming event. new portfolio
         /// входящее событие. Новый портфель
         /// </summary>
         void NewPortfolio(Portfolio portfolio)
@@ -839,16 +904,17 @@ namespace OsEngine.Market.Servers.Kraken
 
             if (_portfolios.Find(p => p.Number == portfolio.Number) == null)
             {
-                SendLogMessage("Доступен новый портфель. Номер: " + portfolio.Number, LogMessageType.System);
                 _portfolios.Add(portfolio);
             }
 
             _portfolioToSend.Enqueue(_portfolios);
         }
 
+//security. Os.Engine format
 //бумаги. формат Os.Engine
 
         /// <summary>
+        /// all instruments in the system
         /// все инструменты в системе
         /// </summary>
         public List<Security> Securities
@@ -858,6 +924,7 @@ namespace OsEngine.Market.Servers.Kraken
         private List<Security> _securities;
 
         /// <summary>
+        /// take instrument as Security class by security name
         /// взять инструмент в виде класса Security, по имени инструмента 
         /// </summary>
         public Security GetSecurityForName(string name)
@@ -870,6 +937,7 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// incoming event: new securities
         /// входящее событие: новые бумаги
         /// </summary>
         void _krakenClient_NewSecuritiesEvent(List<Security> securities)
@@ -891,11 +959,13 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// called when new instruments appear
         /// вызывается при появлении новых инструментов
         /// </summary>
         public event Action<List<Security>> SecuritiesChangeEvent;
 
         /// <summary>
+        /// show instruments
         /// показать инструменты 
         /// </summary>
         public void ShowSecuritiesDialog()
@@ -904,30 +974,34 @@ namespace OsEngine.Market.Servers.Kraken
             ui.ShowDialog();
         }
 
-//Подпись на данные
+        //Subscribe to data
+        //Подпись на данные
 
         /// <summary>
+        /// master of downloading candles
         /// мастер загрузки свечек
         /// </summary>
         private CandleManager _candleManager;
 
         /// <summary>
+        /// multi-threaded access locker in StartThisSecurity
         /// объект блокирующий многопоточный доступ в StartThisSecurity
         /// </summary>
         private object _lockerStarter = new object();
 
         /// <summary>
+        /// start downloading data on instrument
         /// Начать выгрузку данных по инструменту. 
         /// </summary>
-        /// <param name="namePaper">имя бумаги которую будем запускать</param>
-        /// <param name="timeFrameBuilder">объект несущий </param>
-        /// <returns>В случае удачи возвращает CandleSeries
-        /// в случае неудачи null</returns>
+        /// <param name="namePaper">security name for downloading / имя бумаги которую будем запускать</param>
+        /// <param name="timeFrameBuilder">object of timeframe / объект несущий </param>
+        /// <returns>In case of success returns CandleSeries / В случае удачи возвращает CandleSeries
+        /// in case of failure - null / в случае неудачи null</returns>
         public CandleSeries StartThisSecurity(string namePaper, TimeFrameBuilder timeFrameBuilder)
         {
             try
             {
-                if (_lastStartServerTime.AddSeconds(15) > DateTime.Now)
+                if (LastStartServerTime.AddSeconds(15) > DateTime.Now)
                 {
                     return null;
                 }
@@ -938,7 +1012,7 @@ namespace OsEngine.Market.Servers.Kraken
                     {
                         return null;
                     }
-                    // надо запустить сервер если он ещё отключен
+                    // it is necessary to start the server if it is still disabled / надо запустить сервер если он ещё отключен
                     if (ServerStatus != ServerConnectStatus.Connect)
                     {
                         //MessageBox.Show("Сервер не запущен. Скачивание данных прервано. Инструмент: " + namePaper);
@@ -950,8 +1024,8 @@ namespace OsEngine.Market.Servers.Kraken
                         Thread.Sleep(5000);
                         return null;
                     }
-                    if (_lastStartServerTime != DateTime.MinValue &&
-                        _lastStartServerTime.AddSeconds(15) > DateTime.Now)
+                    if (LastStartServerTime != DateTime.MinValue &&
+                        LastStartServerTime.AddSeconds(15) > DateTime.Now)
                     {
                         return null;
                     }
@@ -974,13 +1048,13 @@ namespace OsEngine.Market.Servers.Kraken
                     _tickStorage.SetSecurityToSave(security);
                     _krakenClient.ListenSecurity(namePaper);
 
-                    // 2 создаём серию свечек
-                    CandleSeries series = new CandleSeries(timeFrameBuilder, security);
+                    // 2 create candle series / 2 создаём серию свечек
+                    CandleSeries series = new CandleSeries(timeFrameBuilder, security, StartProgram.IsOsTrader);
 
                     _candleManager.StartSeries(series);
 
-                    SendLogMessage("Инструмент " + series.Security.Name + "ТаймФрейм " + series.TimeFrame +
-                                   " успешно подключен на получение данных и прослушивание свечек",
+                    SendLogMessage(OsLocalization.Market.Label7 + series.Security.Name + OsLocalization.Market.Label10 + series.TimeFrame +
+                                   OsLocalization.Market.Message16,
                         LogMessageType.System);
 
                     return series;
@@ -995,6 +1069,27 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// start data downloading on instrument
+        /// Начать выгрузку данных по инструменту
+        /// </summary>
+        public CandleSeries GetCandleDataToSecurity(string namePaper, TimeFrameBuilder timeFrameBuilder, DateTime startTime,
+            DateTime endTime, DateTime actualTime, bool neadToUpdate)
+        {
+            return StartThisSecurity(namePaper, timeFrameBuilder);
+        }
+
+        /// <summary>
+        /// take ticks data on istrument for period
+        /// взять тиковые данные по инструменту за определённый период
+        /// </summary>
+        public bool GetTickDataToSecurity(string namePaper, DateTime startTime, DateTime endTime, DateTime actualTime,
+            bool neadToUpdete)
+        {
+            return true;
+        }
+
+        /// <summary>
+        /// stop instrument downloading
         /// остановить скачивание инструмента
         /// </summary>
         public void StopThisSecurity(CandleSeries series)
@@ -1006,6 +1101,7 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// changed candle series
         /// изменились серии свечек
         /// </summary>
         private void _candleManager_CandleUpdateEvent(CandleSeries series)
@@ -1014,20 +1110,23 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// called when candle series changes
         /// вызывается в момент изменения серий свечек
         /// </summary>
         public event Action<CandleSeries> NewCandleIncomeEvent;
 
         /// <summary>
+        /// connectors connected to the server need to re-order the data
         /// коннекторам подключеным к серверу необходимо перезаказать данные
         /// </summary>
         public event Action NeadToReconnectEvent;
 
         /// <summary>
+        /// take instrument history
         /// взять историю по инструменту
         /// </summary>
-        /// <param name="securityName">название бумаги</param>
-        /// <param name="minutesCount">кол-во минут в свечке</param>
+        /// <param name="securityName">security name/название бумаги</param>
+        /// <param name="minutesCount">amount of minutes in the candle / кол-во минут в свечке</param>
         /// <returns></returns>
         public List<Candle> GetHistory(string securityName, int minutesCount)
         {
@@ -1043,14 +1142,17 @@ namespace OsEngine.Market.Servers.Kraken
             return _krakenClient.GetCandles(securityName, minutesCount);
         }
 
+// depth
 // стакан
 
         /// <summary>
+        /// depth on instrument
         /// стаканы по инструментам
         /// </summary>
         private List<MarketDepth> _marketDepths = new List<MarketDepth>();
 
         /// <summary>
+        /// take depth by security name
         /// взять стакан по названию бумаги
         /// </summary>
         public MarketDepth GetMarketDepth(string securityName)
@@ -1059,6 +1161,7 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// incoming event. Updated depth
         /// входящее событие. Обновился стакан
         /// </summary>
         void _krakenClient_NewMarketDepthEvent(MarketDepth marketDepth)
@@ -1100,9 +1203,11 @@ namespace OsEngine.Market.Servers.Kraken
             }
         }
 
+// saving extended trade data
 // сохранение расширенных данных по трейду
 
         /// <summary>
+        /// upload trades by depth data
         /// прогрузить трейды данными стакана
         /// </summary>
         private void BathTradeMarketDepthData(OsEngine.Entity.Trade trade)
@@ -1123,23 +1228,28 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// called when the bid or ask for instrument is changed
         /// вызывается когда изменяется бид или аск по инструменту
         /// </summary>
         public event Action<decimal, decimal, Security> NewBidAscIncomeEvent;
 
         /// <summary>
+        /// called when depth is changed
         /// вызывается когда изменяется стакан
         /// </summary>
         public event Action<MarketDepth> NewMarketDepthEvent;
 
+//ticks
 //тики
 
         /// <summary>
+        /// all ticks
         /// все тики
         /// </summary>
         private List<OsEngine.Entity.Trade>[] _allTrades; 
 
         /// <summary>
+        /// all server ticks
         /// все тики имеющиеся у сервера
         /// </summary>
         public List<OsEngine.Entity.Trade>[] AllTrades
@@ -1148,6 +1258,7 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// incoming ticks from system
         /// входящие тики из системы
         /// </summary>
         private void AddTick(OsEngine.Entity.Trade trade)
@@ -1156,7 +1267,7 @@ namespace OsEngine.Market.Servers.Kraken
             {
                 BathTradeMarketDepthData(trade);
 
-                // сохраняем
+                // save / сохраняем
                 if (_allTrades == null)
                 {
                     _allTrades = new List<OsEngine.Entity.Trade>[1];
@@ -1164,7 +1275,7 @@ namespace OsEngine.Market.Servers.Kraken
                 }
                 else
                 {
-                    // сортируем сделки по хранилищам
+                    // sort trades by storages / сортируем сделки по хранилищам
                     List<OsEngine.Entity.Trade> myList = null;
                     bool isSave = false;
                     for (int i = 0; i < _allTrades.Length; i++)
@@ -1172,7 +1283,7 @@ namespace OsEngine.Market.Servers.Kraken
                         if (_allTrades[i] != null && _allTrades[i].Count != 0 &&
                             _allTrades[i][0].SecurityNameCode == trade.SecurityNameCode)
                         {
-                            // если для этого инструметна уже есть хранилище, сохраняем и всё
+                            // if there is already a repository for this tool, save it / если для этого инструметна уже есть хранилище, сохраняем и всё
                             _allTrades[i].Add(trade);
                             myList = _allTrades[i];
                             isSave = true;
@@ -1182,7 +1293,7 @@ namespace OsEngine.Market.Servers.Kraken
 
                     if (isSave == false)
                     {
-                        // хранилища для инструмента нет
+                        // no storage for the instrument / хранилища для инструмента нет
                         List<OsEngine.Entity.Trade>[] allTradesNew = new List<OsEngine.Entity.Trade>[_allTrades.Length + 1];
                         for (int i = 0; i < _allTrades.Length; i++)
                         {
@@ -1206,6 +1317,7 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// the ticks came from the ticks storage. Occurs immediately after loading
         /// пришли тики из хранилища тиков. Происходит сразу после загрузки
         /// </summary>
         void _tickStorage_TickLoadedEvent(List<OsEngine.Entity.Trade>[] trades)
@@ -1214,6 +1326,7 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// take ticks by instrument
         /// взять тики по инструменту
         /// </summary>
         public List<OsEngine.Entity.Trade> GetAllTradesToSecurity(Security security)
@@ -1235,13 +1348,16 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// called when new trade appears
         /// вызывается в момет появления новых трейдов по инструменту
         /// </summary>
         public event Action<List<OsEngine.Entity.Trade>> NewTradeEvent;
 
+//my trades
 //мои сделки
 
         /// <summary>
+        /// my trades
         /// мои сделки
         /// </summary>
         public List<MyTrade> MyTrades
@@ -1251,6 +1367,7 @@ namespace OsEngine.Market.Servers.Kraken
         private List<MyTrade> _myTrades;
         
         /// <summary>
+        /// incoming event. my new trade in the system 
         /// входящее событие. Новый мой трейд в системе
         /// </summary>
         void _Client_NewMyTradeEvent(MyTrade trade)
@@ -1265,13 +1382,16 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// called when my new trade comes
         /// вызывается когда приходит новая моя сделка
         /// </summary>
         public event Action<MyTrade> NewMyTradeEvent;
 
-//исполнение ордеров
+        //order execution
+        //исполнение ордеров
 
         /// <summary>
+        /// work place of thread with using queues of order execution and cancellation
         /// место работы потока на очередях исполнения заявок и их отмены
         /// </summary>
         private void ExecutorOrdersThreadArea()
@@ -1334,21 +1454,25 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// queue of orders for placing in the system
         /// очередь ордеров для выставления в систему
         /// </summary>
         private ConcurrentQueue<Order> _ordersToExecute;
 
         /// <summary>
+        /// queue of orders for cancellation in the system
         /// очередь ордеров для отмены в системе
         /// </summary>
         private ConcurrentQueue<Order> _ordersToCansel;
 
         /// <summary>
+        /// orders in IB format
         /// ордера в формате IB
         /// </summary>
         private List<Order> _orders; 
 
         /// <summary>
+        /// execute order
         /// исполнить ордер
         /// </summary>
         public void ExecuteOrder(Order order)
@@ -1363,6 +1487,7 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// cancel order
         /// отменить ордер
         /// </summary>
         public void CanselOrder(Order order)
@@ -1370,7 +1495,7 @@ namespace OsEngine.Market.Servers.Kraken
             _ordersToCansel.Enqueue(order);
         }
 
-        void _ibClient_NewOrderEvent(Order order)
+        void _newOrderEvent(Order order)
         {
             try
             {
@@ -1379,6 +1504,7 @@ namespace OsEngine.Market.Servers.Kraken
                     _orders = new List<Order>();
                 }
 
+                order.ServerType = ServerType.Kraken;
                 _ordersToSend.Enqueue(order);
             }
             catch (Exception error)
@@ -1388,13 +1514,16 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// called when a new order appears in the system
         /// вызывается когда в системе появляется новый ордер
         /// </summary>
         public event Action<Order> NewOrderIncomeEvent;
 
+//logging
 //обработка лога
 
         /// <summary>
+        /// add a new log message
         /// добавить в лог новое сообщение
         /// </summary>
         private void SendLogMessage(string message,LogMessageType type)
@@ -1406,11 +1535,13 @@ namespace OsEngine.Market.Servers.Kraken
         }
 
         /// <summary>
+        /// log manager
         /// менеджер лога
         /// </summary>
         private Log _logMaster;
 
         /// <summary>
+        /// outgoing log message
         /// исходящее сообщение для лога
         /// </summary>
         public event Action<string,LogMessageType> LogMessageEvent;
@@ -1418,16 +1549,19 @@ namespace OsEngine.Market.Servers.Kraken
     }
 
     /// <summary>
+    /// class crutch working in the process of creating my trades
     /// класс костыль работающий в процессе создания моих трейдов
     /// </summary>
     public class MyTradeCreate
     {
         /// <summary>
+        /// parent's order number
         /// номер ордера родителя
         /// </summary>
         public int idOrder;
 
         /// <summary>
+        /// volume of parent's order in placing my trade time
         /// объём ордера родителя в момент выставления моего трейда
         /// </summary>
         public int FillOrderToCreateMyTrade;
@@ -1435,21 +1569,25 @@ namespace OsEngine.Market.Servers.Kraken
     }
 
     /// <summary>
+    /// data type for Kraken connector
     /// тип данных которые будет качать коннектор Кракен
     /// </summary>
     public enum KrakenDateType
     {
         /// <summary>
+        /// only depths
         /// только стаканы
         /// </summary>
         OnlyMarketDepth,
 
         /// <summary>
+        /// only trades
         /// только трейды
         /// </summary>
         OnlyTrades,
 
         /// <summary>
+        /// all data types
         /// все типы данных
         /// </summary>
         AllData

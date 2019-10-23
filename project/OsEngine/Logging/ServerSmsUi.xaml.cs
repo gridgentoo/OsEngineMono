@@ -1,17 +1,20 @@
 ﻿/*
+ *Your rights to use the code are governed by this license https://github.com/AlexWan/OsEngine/blob/master/LICENSE
  *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
 using System.Windows;
+using OsEngine.Language;
 
 namespace OsEngine.Logging
 {
     /// <summary>
+    /// settings window of mailing server
     /// Окно настроек сервера почтовой рассылки
     /// </summary>
     public partial class ServerSmsUi
     {
-        public ServerSmsUi() // конструктор
+        public ServerSmsUi() // constructor / конструктор
         {
             InitializeComponent();
 
@@ -29,9 +32,15 @@ namespace OsEngine.Logging
                     TextBoxFones.Text += phones[i] + "\n";
                 }
             }
+
+            Title = OsLocalization.Logging.TitleSmsServer;
+            ButtonAccept.Content = OsLocalization.Logging.Button1;
+            Label15.Content = OsLocalization.Logging.Label15;
+            Label12.Content = OsLocalization.Logging.Label12;
+            Label14.Content = OsLocalization.Logging.Label14;
         }
 
-        private void buttonAccept_Click(object sender, RoutedEventArgs e) // принять
+        private void buttonAccept_Click(object sender, RoutedEventArgs e) // accept / принять
         {
             ServerSms serverSms = ServerSms.GetSmsServer();
             serverSms.SmscLogin = TextBoxMyLogin.Text;

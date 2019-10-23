@@ -1,4 +1,5 @@
 ﻿/*
+ *Your rights to use the code are governed by this license https://github.com/AlexWan/OsEngine/blob/master/LICENSE
  *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
@@ -7,9 +8,9 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Threading;
 using OsEngine.Entity;
+using OsEngine.Language;
 using OsEngine.Logging;
 using Order = OsEngine.Entity.Order;
 
@@ -17,14 +18,17 @@ namespace OsEngine.Market.Servers.InteractivBrokers
 {
 
     /// <summary>
+    /// class-server for connection to Interactive Brokers with using terminal TWS
     /// класс - сервер для подключения к Interactive Brokers через терминал TWS
     /// </summary>
     public class InteractivBrokersServer : IServer
     {
 
-//сервис. менеджмент первичных настроек
+        //service. primary settings management         
+        //сервис. менеджмент первичных настроек
 
         /// <summary>
+        /// constructor
         ///  конструктор
         /// </summary>
         public InteractivBrokersServer()
@@ -62,7 +66,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
             ordersExecutor.IsBackground = true;
             ordersExecutor.Start();
 
-            _logMaster = new Log("IbServer");
+            _logMaster = new Log("IbServer", StartProgram.IsOsTrader);
             _logMaster.Listen(this);
 
             _serverStatusNead = ServerConnectStatus.Disconnect;
@@ -81,11 +85,13 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// host of connection to IB
         /// host подключения к Ib
         /// </summary>
         public string Host;
 
         /// <summary>
+        /// port for connection to IB
         /// порт для подключеня к Ib
         /// </summary>
         public int Port;
@@ -96,20 +102,38 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         public int ClientIdInSystem;
 
         /// <summary>
+        /// take server type
         /// взять тип сервера
         /// </summary>
         public ServerType ServerType { get; set; }
 
         /// <summary>
-        /// вызвать окно настроек
+        /// show settings
+        /// показать настройки
         /// </summary>
         public void ShowDialog()
         {
-            InteractivBrokersUi ui = new InteractivBrokersUi(this, _logMaster);
-            ui.Show();
+            if (_ui == null)
+            {
+                _ui = new InteractivBrokersUi(this, _logMaster);
+                _ui.Show();
+                _ui.Closing += (sender, args) => { _ui = null; };
+            }
+            else
+            {
+                _ui.Activate();
+            }
+           
         }
 
         /// <summary>
+        /// item control window
+        /// окно управления элемента
+        /// </summary>
+        private InteractivBrokersUi _ui;
+
+        /// <summary>
+        /// download settings from file
         /// загрузить настройки из файла
         /// </summary>
         private void Load()
@@ -139,6 +163,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// save settings in the file
         /// сохранить настройки в файл
         /// </summary>
         public void Save()
@@ -161,9 +186,11 @@ namespace OsEngine.Market.Servers.InteractivBrokers
             }
         }
 
-//хранилище тиков
-        
+        // ticks storage
+        //хранилище тиков
+
         /// <summary>
+        /// ticks storage
         /// хранилище тиков
         /// </summary>
         private ServerTickStorage _tickStorage;
@@ -171,6 +198,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         private int _countDaysTickNeadToSave;
 
         /// <summary>
+        /// number of days ago, tick data should be saved
         /// количество дней назад, тиковые данные по которым нужно сохранять
         /// </summary>
         public int CountDaysTickNeadToSave
@@ -186,6 +214,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         private bool _neadToSaveTicks;
 
         /// <summary>
+        /// shows whether need to save ticks
         /// нужно ли сохранять тики 
         /// </summary>
         public bool NeadToSaveTicks
@@ -198,11 +227,13 @@ namespace OsEngine.Market.Servers.InteractivBrokers
             }
         }
 
+// server status
 //статус сервера
 
         private ServerConnectStatus _serverConnectStatus;
 
         /// <summary>
+        /// server status
         /// статус сервера
         /// </summary>
         public ServerConnectStatus ServerStatus
@@ -213,7 +244,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                 if (value != _serverConnectStatus)
                 {
                     _serverConnectStatus = value;
-                    SendLogMessage(_serverConnectStatus + " Изменилось состояние соединения", LogMessageType.Connect);
+                    SendLogMessage(_serverConnectStatus + OsLocalization.Market.Message7, LogMessageType.Connect);
                     if (ConnectStatusChangeEvent != null)
                     {
                         ConnectStatusChangeEvent(_serverConnectStatus.ToString());
@@ -223,19 +254,23 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// nessasary server status. Need a thread that monitors the connection. Depending on this field, controls the connection
         /// нужный статус сервера. Нужен потоку который следит за соединением
         /// В зависимости от этого поля управляет соединением
         /// </summary>
         private ServerConnectStatus _serverStatusNead;
 
         /// <summary>
+        /// called when connection status changes
         /// вызывается когда статус соединения изменяется
         /// </summary>
         public event Action<string> ConnectStatusChangeEvent;
 
-//подключение / отключение
+        // connect / disconnect
+        //подключение / отключение
 
         /// <summary>
+        /// start server
         /// запустить сервер
         /// </summary>
         public void StartServer()
@@ -244,6 +279,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// stop server
         /// остановить сервер
         /// </summary>
         public void StopServer()
@@ -252,6 +288,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// connection is established
         /// соединение установлено
         /// </summary>
         void _ibClient_ConnectionSucsess()
@@ -267,6 +304,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// connection is lost
         /// соединение разорвано
         /// </summary>
         void _ibClient_ConnectionFail()
@@ -281,16 +319,19 @@ namespace OsEngine.Market.Servers.InteractivBrokers
             }
         }
 
-//работа потока следящего за соединением и заказывающего первичные данные
+        // thread work controlling the connection and rdering primary data
+        //работа потока следящего за соединением и заказывающего первичные данные
 
         private IbClient _ibClient;
 
         /// <summary>
+        /// the main thread controlling the connection, dowloading portfolios and securities, sending data to up
         /// основной поток, следящий за подключением, загрузкой портфелей и бумаг, пересылкой данных на верх
         /// </summary>
         private Thread _threadPrime;
 
         /// <summary>
+        /// place where the connection is controlled
         /// место в котором контролируется соединение.
         /// опрашиваются потоки данных
         /// </summary>
@@ -317,7 +358,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                         if (state == ServerConnectStatus.Disconnect
                             && _serverStatusNead == ServerConnectStatus.Connect)
                         {
-                            SendLogMessage("Запущена процедура активации подключения", LogMessageType.System);
+                            SendLogMessage(OsLocalization.Market.Message8, LogMessageType.System);
                             Connect();
                             continue;
                         }
@@ -325,7 +366,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                         if (state == ServerConnectStatus.Connect
                             && _serverStatusNead == ServerConnectStatus.Disconnect)
                         {
-                            SendLogMessage("Запущена процедура отключения подключения", LogMessageType.System);
+                            SendLogMessage(OsLocalization.Market.Message9, LogMessageType.System);
                             Disconnect();
                             _startListening = false;
                             continue;
@@ -338,23 +379,20 @@ namespace OsEngine.Market.Servers.InteractivBrokers
 
                         if (_candleManager == null)
                         {
-                            SendLogMessage("Создаём менеджер свечей", LogMessageType.System);
+                            SendLogMessage(OsLocalization.Market.Message10, LogMessageType.System);
                             StartCandleManager();
                             continue;
                         }
 
                         if (Portfolios == null)
                         {
-                            SendLogMessage("Портфели не найдены. Запрашиваем портфели", LogMessageType.System);
                             GetPortfolio();
-                            SendLogMessage("Подписываемся на обновление времени сервера", LogMessageType.System);
 
                             continue;
                         }
 
                         if (Securities == null)
                         {
-                            SendLogMessage("Бумаги не найдены. Запрашиваем бумаги", LogMessageType.System);
                             GetSecurities();
                             continue;
                         }
@@ -362,27 +400,24 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                         if (_neadToWatchSecurity)
                         {
                             _neadToWatchSecurity = false;
-                            SendLogMessage("Обновляем список бумаг", LogMessageType.System);
                             GetSecurities();
                             continue;
                         }
 
                         if (_startListening == false)
                         {
-                            SendLogMessage("Подписываемся на прослушивание данных", LogMessageType.System);
                             StartListeningPortfolios();
                             _startListening = true;
                         }
                     }
                     catch (Exception error)
                     {
-                        SendLogMessage("КРИТИЧЕСКАЯ ОШИБКА. Реконнект", LogMessageType.Error);
                         SendLogMessage(error.ToString(), LogMessageType.Error);
                         ServerStatus = ServerConnectStatus.Disconnect;
-                        Dispose(); // очищаем данные о предыдущем коннекторе
+                        Dispose(); // clear the data on the previous connector/очищаем данные о предыдущем коннекторе
 
                         Thread.Sleep(5000);
-                        // переподключаемся
+                        // reconnect / переподключаемся
                         _threadPrime = new Thread(PrimeThreadArea);
                         _threadPrime.CurrentCulture = new CultureInfo("us-US");
                        // _threadPrime.IsBackground = true;
@@ -394,11 +429,13 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// server time of last starting
         /// время последнего старта сервера
         /// </summary>
-        private DateTime _lastStartServerTime = DateTime.MinValue;
+        public DateTime LastStartServerTime { get; set; }
 
         /// <summary>
+        /// create new connection
         /// создать новое подключение
         /// </summary>
         private void CreateNewServerTws()
@@ -420,35 +457,37 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// start the connection process
         /// начать процесс подключения
         /// </summary>
         private void Connect()
         {
             if (string.IsNullOrWhiteSpace(Host))
             {
-                SendLogMessage("Хост не может быть пустым. Подключение прервано.", LogMessageType.Error);
+                SendLogMessage(OsLocalization.Market.Label49, LogMessageType.Error);
                 _serverStatusNead = ServerConnectStatus.Disconnect;
                 return;
             }
             if (Port <= 0)
             {
-                SendLogMessage("В значении порт не верное значение. Подключение прервано.", LogMessageType.Error);
+                SendLogMessage(OsLocalization.Market.Label50, LogMessageType.Error);
                 _serverStatusNead = ServerConnectStatus.Disconnect;
                 return;
             }
             if (ClientIdInSystem <= 0)
             {
-                SendLogMessage("В значении номер Id не верное значение. Подключение прервано.", LogMessageType.Error);
+                SendLogMessage(OsLocalization.Market.Label51, LogMessageType.Error);
                 _serverStatusNead = ServerConnectStatus.Disconnect;
                 return;
             }
 
             _ibClient.Connect(Host, Port);
-            _lastStartServerTime = DateTime.Now;
+            LastStartServerTime = DateTime.Now;
             Thread.Sleep(5000);
         }
 
         /// <summary>
+        /// suspend the connection
         /// приостановить подключение
         /// </summary>
         private void Disconnect()
@@ -462,6 +501,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// start candle downloading
         /// запускает скачиватель свечек
         /// </summary>
         private void StartCandleManager()
@@ -475,6 +515,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// start securities and portfolios downloading
         /// включает загрузку инструментов и портфелей
         /// </summary>
         private void GetPortfolio()
@@ -484,11 +525,13 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// need to get new information about contract 
         /// необходимо перезаказать информацию о контрактах
         /// </summary>
         private bool _neadToWatchSecurity;
 
         /// <summary>
+        /// take information about securities 
         /// взять информацию о бумагах
         /// </summary>
         private void GetSecurities()
@@ -496,7 +539,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
             if (_secIB == null ||
                 _secIB.Count == 0)
             {
-                SendLogMessage("Не указаны инструменты которые надо скачать. Подключение остановлено. Укажите инструменты в соответствующем окне.", LogMessageType.System);
+                SendLogMessage(OsLocalization.Market.Label52, LogMessageType.System);
                 Thread.Sleep(15000);
                 return;
             }
@@ -510,7 +553,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                 string name = _secIB[i].Symbol + "_" + _secIB[i].SecType + "_" + _secIB[i].Exchange;
                 if (_namesSubscribleSecurities.Find(s => s == name) != null)
                 {
-                    // если мы уже подписывались на данные этого инструмента
+                    // if we have already subscribed to this instrument / если мы уже подписывались на данные этого инструмента
                     continue;
                 }
                 _namesSubscribleSecurities.Add(name);
@@ -525,16 +568,19 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// names of the instruments on which we have already subscribed
         /// названия инструментов на которые мы уже подписались
         /// </summary>
         private List<string> _namesSubscribleSecurities;
 
         /// <summary>
+        /// whether portfolio listening is enabled 
         /// включена ли прослушка портфеля
         /// </summary>
         private bool _startListening;
 
         /// <summary>
+        /// start portfolio listining 
         /// включает прослушивание портфелей
         /// </summary>
         private void StartListeningPortfolios()
@@ -550,6 +596,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// bring the program to the start time. Clear all objects involved in connecting to the server
         /// привести программу к моменту запуска. Очистить все объекты участвующие в подключении к серверу
         /// </summary>
         [System.Runtime.ExceptionServices.HandleProcessCorruptedStateExceptionsAttribute]
@@ -586,53 +633,64 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// multi-threaded access locker to server
         /// блокиратор многопоточного доступа к серверу
         /// </summary>
         private object _serverLocker = new object();
 
-//работа потока рассылки входящих данных
+        //work of thread with incoming data 
+        //работа потока рассылки входящих данных
 
         /// <summary>
+        /// new order queue
         /// очередь новых ордеров
         /// </summary>
         private ConcurrentQueue<Order> _ordersToSend;
 
         /// <summary>
+        /// ticks queue
         /// очередь тиков
         /// </summary>
         private ConcurrentQueue<List<Trade>> _tradesToSend;
 
         /// <summary>
+        /// new portfolios queue
         /// очередь новых портфелей
         /// </summary>
         private ConcurrentQueue<List<Portfolio>> _portfolioToSend;
 
         /// <summary>
+        /// new instruments queue
         /// очередь новых инструментов
         /// </summary>
         private ConcurrentQueue<List<Security>> _securitiesToSend;
 
         /// <summary>
+        /// my new trades queue
         /// очередь новых моих сделок
         /// </summary>
         private ConcurrentQueue<MyTrade> _myTradesToSend;
 
         /// <summary>
+        /// new time queue
         /// очередь нового времени
         /// </summary>
         private ConcurrentQueue<DateTime> _newServerTime;
 
         /// <summary>
+        /// queue of updated candle series
         /// очередь обновлённых серий свечек
         /// </summary>
         private ConcurrentQueue<CandleSeries> _candleSeriesToSend;
 
         /// <summary>
+        /// queue of new depths
         /// очередь новых стаканов
         /// </summary>
         private ConcurrentQueue<MarketDepth> _marketDepthsToSend;
 
         /// <summary>
+        /// work method of thread sending the incoming data
         /// метод работы потока рассылающий входящие данные
         /// </summary>
         private void SenderThreadArea()
@@ -750,11 +808,13 @@ namespace OsEngine.Market.Servers.InteractivBrokers
             }
         }
 
+// server time
 // время сервера
 
         private DateTime _serverTime;
 
         /// <summary>
+        /// server time
         /// время сервера
         /// </summary>
         public DateTime ServerTime
@@ -775,15 +835,18 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// called when server time is changed
         /// вызывается когда изменяется время сервера
         /// </summary>
         public event Action<DateTime> TimeServerChangeEvent;
 
+// portfolios and positions
 // портфели и позиции
 
         private List<Portfolio> _portfolios;
 
         /// <summary>
+        /// all account in the system
         /// все счета в системе
         /// </summary>
         public List<Portfolio> Portfolios
@@ -792,6 +855,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// take portfolio by number/name
         /// взять портфель по его номеру/имени
         /// </summary>
         public Portfolio GetPortfolioForName(string name)
@@ -813,6 +877,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// called when new portfolios appear in the system
         /// вызывается когда в системе появляются новые портфели
         /// </summary>
         public event Action<List<Portfolio>> PortfoliosChangeEvent;
@@ -835,7 +900,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                     _portfolios.Add(newpPortfolio);
                     myPortfolio = newpPortfolio;
                     myPortfolio.ValueBlocked = 0;
-                    SendLogMessage("Создан портфель " + account, LogMessageType.System);
+                    SendLogMessage(OsLocalization.Market.Label53+ account, LogMessageType.System);
                 }
 
                 myPortfolio.ValueCurrent = value;
@@ -857,7 +922,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                 {
                     return;
                 }
-                // смотрим, есть ли уже нужный портфель
+                // see if you already have the right portfolio / смотрим, есть ли уже нужный портфель
                 Portfolio portfolio = Portfolios.Find(portfolio1 => portfolio1.Number == accountName);
 
                 if (portfolio == null)
@@ -866,7 +931,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                     return;
                 }
 
-                // смотрим, есть ли нужная бумага в формате Os.Engine
+                // see if you already have the right Os.Engine security / смотрим, есть ли нужная бумага в формате Os.Engine
                 string name = contract.Symbol + "_" + contract.SecType + "_" + contract.Exchange;
 
                 if (_securities.Find(security => security.Name == name) == null)
@@ -875,7 +940,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                     return;
                 }
 
-                // обновляем позицию по контракту
+                // update the contract position / обновляем позицию по контракту
 
                 PositionOnBoard positionOnBoard = new PositionOnBoard();
 
@@ -893,9 +958,11 @@ namespace OsEngine.Market.Servers.InteractivBrokers
             }
         }
 
-// бумаги. То что пользователь вводит для подписки. Хранение и менеджмент
+        // security. What the user enters for the subscription. Storage and management
+        // бумаги. То что пользователь вводит для подписки. Хранение и менеджмент
 
         /// <summary>
+        /// show security settings window
         /// показать окно настроек бумаг
         /// </summary>
         public void ShowSecuritySubscribleUi()
@@ -908,11 +975,13 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// security for subscription to server in the IB format
         /// бумаги для подписи у сервера в формате IB
         /// </summary>
         private List<SecurityIb> _secIB;
 
         /// <summary>
+        /// save security for connection
         /// сохранить бумаги для подключения
         /// </summary>
         private void SaveIbSecurities()
@@ -955,6 +1024,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// upload security for connection
         /// загрузить бумаги для подключения
         /// </summary>
         private void LoadIbSecurities()
@@ -1029,11 +1099,13 @@ namespace OsEngine.Market.Servers.InteractivBrokers
             }
         }
 
+// security. Os.Engine format
 // бумаги. формат Os.Engine
 
         private List<Security> _securities;
 
         /// <summary>
+        /// all instruments in the system
         /// все инструменты в системе
         /// </summary>
         public List<Security> Securities
@@ -1042,6 +1114,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// take instrument as Security class by instrument name
         /// взять инструмент в виде класса Security, по имени инструмента 
         /// </summary>
         public Security GetSecurityForName(string name)
@@ -1104,7 +1177,6 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                     _securities.Add(security);
 
                     _securitiesToSend.Enqueue(_securities);
-                    SendLogMessage("Подключен новый инструмент. " + name, LogMessageType.System);
                 }
             }
             catch (Exception error)
@@ -1114,11 +1186,13 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// called when new tools appear
         /// вызывается при появлении новых инструментов
         /// </summary>
         public event Action<List<Security>> SecuritiesChangeEvent;
 
         /// <summary>
+        /// show instruments
         /// показать инструменты 
         /// </summary>
         public void ShowSecuritiesDialog()
@@ -1127,14 +1201,17 @@ namespace OsEngine.Market.Servers.InteractivBrokers
             ui.ShowDialog();
         }
 
-//Подпись на данные
+        //Data subscription
+        //Подпись на данные
 
         /// <summary>
+        /// master of candle downloading
         /// мастер загрузки свечек
         /// </summary>
         private CandleManager _candleManager;
 
         /// <summary>
+        /// multi-threaded access locker in StartThisSecurity
         /// объект блокирующий многопоточный доступ в StartThisSecurity
         /// </summary>
         private object _lockerStarter = new object();
@@ -1144,15 +1221,15 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         /// <summary>
         /// Начать выгрузку данных по инструменту. 
         /// </summary>
-        /// <param name="namePaper">имя бумаги которую будем запускать</param>
-        /// <param name="timeFrameBuilder">объект несущий </param>
-        /// <returns>В случае удачи возвращает CandleSeries
-        /// в случае неудачи null</returns>
+        /// <param name="namePaper">security name for downloading/имя бумаги которую будем запускать</param>
+        /// <param name="timeFrameBuilder">objsect with timeframe / объект несущий </param>
+        /// <returns>In case of success returns CandleSeries/В случае удачи возвращает CandleSeries
+        /// in case of failure null / в случае неудачи null</returns>
         public CandleSeries StartThisSecurity(string namePaper, TimeFrameBuilder timeFrameBuilder)
         {
             try
             {
-                if (_lastStartServerTime.AddSeconds(15) > DateTime.Now)
+                if (LastStartServerTime.AddSeconds(15) > DateTime.Now)
                 {
                     return null;
                 }
@@ -1163,7 +1240,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                     {
                         return null;
                     }
-                    // надо запустить сервер если он ещё отключен
+                    // need to start the server if it is still disabled/надо запустить сервер если он ещё отключен
                     if (ServerStatus != ServerConnectStatus.Connect)
                     {
                         //MessageBox.Show("Сервер не запущен. Скачивание данных прервано. Инструмент: " + namePaper);
@@ -1175,8 +1252,8 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                         Thread.Sleep(5000);
                         return null;
                     }
-                    if (_lastStartServerTime != DateTime.MinValue &&
-                        _lastStartServerTime.AddSeconds(15) > DateTime.Now)
+                    if (LastStartServerTime != DateTime.MinValue &&
+                        LastStartServerTime.AddSeconds(15) > DateTime.Now)
                     {
                         return null;
                     }
@@ -1225,13 +1302,14 @@ namespace OsEngine.Market.Servers.InteractivBrokers
 
                     _tickStorage.SetSecurityToSave(security);
 
+                    // 2 create candles series
                     // 2 создаём серию свечек
-                    CandleSeries series = new CandleSeries(timeFrameBuilder, security);
+                    CandleSeries series = new CandleSeries(timeFrameBuilder, security, StartProgram.IsOsTrader);
 
                     _candleManager.StartSeries(series);
 
-                    SendLogMessage("Инструмент " + series.Security.Name + "ТаймФрейм " + series.TimeFrame +
-                                   " успешно подключен на получение данных и прослушивание свечек",
+                    SendLogMessage(OsLocalization.Market.Message14 + series.Security.Name + OsLocalization.Market.Message15 + series.TimeFrame +
+                                   OsLocalization.Market.Message16,
                         LogMessageType.System);
 
                     return series;
@@ -1247,6 +1325,27 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// start downloasing instrument data
+        /// Начать выгрузку данных по инструменту
+        /// </summary>
+        public CandleSeries GetCandleDataToSecurity(string namePaper, TimeFrameBuilder timeFrameBuilder, DateTime startTime,
+            DateTime endTime, DateTime actualTime, bool neadToUpdate)
+        {
+            return StartThisSecurity(namePaper, timeFrameBuilder);
+        }
+
+        /// <summary>
+        /// take tick data on instrument for period
+        /// взять тиковые данные по инструменту за определённый период
+        /// </summary>
+        public bool GetTickDataToSecurity(string namePaper, DateTime startTime, DateTime endTime, DateTime actualTime,
+            bool neadToUpdete)
+        {
+            return true;
+        }
+
+        /// <summary>
+        /// stop instrument downloading
         /// остановить скачивание инструмента
         /// </summary>
         public void StopThisSecurity(CandleSeries series)
@@ -1258,6 +1357,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// canldle series changed
         /// изменились серии свечек
         /// </summary>
         private void _candleManager_CandleUpdateEvent(CandleSeries series)
@@ -1266,23 +1366,28 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// called when canldle series changed
         /// вызывается в момент изменения серий свечек
         /// </summary>
         public event Action<CandleSeries> NewCandleIncomeEvent;
 
         /// <summary>
+        /// connectors connected to server need to get a new data
         /// коннекторам подключеным к серверу необходимо перезаказать данные
         /// </summary>
         public event Action NeadToReconnectEvent;
 
-// стакан
+        // depth
+        // стакан
 
         /// <summary>
+        /// depth by instruments
         /// стаканы по инструментам
         /// </summary>
         private List<MarketDepth> _marketDepths = new List<MarketDepth>();
 
         /// <summary>
+        /// take depth by security name
         /// взять стакан по названию бумаги
         /// </summary>
         public MarketDepth GetMarketDepth(string securityName)
@@ -1290,9 +1395,11 @@ namespace OsEngine.Market.Servers.InteractivBrokers
             return _marketDepths.Find(m => m.SecurityNameCode == securityName);
         }
 
-// сохранение расширенных данных по трейду
+        // saving extended trade data
+        // сохранение расширенных данных по трейду
 
         /// <summary>
+        /// load trades with depth data
         /// прогрузить трейды данными стакана
         /// </summary>
         private void BathTradeMarketDepthData(Trade trade)
@@ -1313,6 +1420,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// all depths
         /// все стаканы
         /// </summary>
         private List<MarketDepth> _depths;
@@ -1321,7 +1429,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         {
             try
             {
-                // берём все нужные данные
+                // take all the necessary data / берём все нужные данные
                 SecurityIb myContract = _secIB.Find(contract => contract.ConId == id);
 
                 if (myContract == null)
@@ -1360,11 +1468,11 @@ namespace OsEngine.Market.Servers.InteractivBrokers
 
                 Side sideLine;
                 if (side == 1)
-                { // аск
+                { // ask/аск
                     sideLine = Side.Buy;
                 }
                 else
-                { // бид
+                { // bid/бид
                     sideLine = Side.Sell;
                 }
 
@@ -1386,7 +1494,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                 }
 
                 if (operation == 2)
-                {// если нужно удалить
+                {// if need to remove / если нужно удалить
 
                     if (sideLine == Side.Buy)
                     {
@@ -1433,7 +1541,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                     }
                 }*/
                 else if (operation == 0 || operation == 1)
-                { // нужно обновить
+                { // need to update / нужно обновить
                     if (sideLine == Side.Buy)
                     {
                         MarketDepthLevel level = bids[position];
@@ -1456,7 +1564,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                     MarketDepth copy = myDepth.GetCopy();
                     _marketDepthsToSend.Enqueue(copy);
 
-                    // грузим стаканы в хранилище
+                    // load depths in storage / грузим стаканы в хранилище
                     for (int i = 0; i < _marketDepths.Count; i++)
                     {
                         if (_marketDepths[i].SecurityNameCode == copy.SecurityNameCode)
@@ -1467,6 +1575,11 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                     }
                     _marketDepths.Add(copy);
 
+                    if (NewBidAscIncomeEvent != null &&
+                        copy.Bids.Count != 0 && copy.Asks.Count != 0)
+                    {
+                        NewBidAscIncomeEvent(copy.Bids[0].Price, copy.Asks[0].Price, mySecurity);
+                    }
                 }
             }
             catch (Exception error)
@@ -1476,23 +1589,28 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// called when bid or ask changes over the instrument
         /// вызывается когда изменяется бид или аск по инструменту
         /// </summary>
         public event Action<decimal, decimal, Security> NewBidAscIncomeEvent;
 
         /// <summary>
+        /// called when depth changes
         /// вызывается когда изменяется стакан
         /// </summary>
         public event Action<MarketDepth> NewMarketDepthEvent;
 
+//ticks
 //тики
 
         /// <summary>
+        /// all ticks
         /// все тики
         /// </summary>
         private List<Trade>[] _allTrades; 
 
         /// <summary>
+        /// all server ticks
         /// все тики имеющиеся у сервера
         /// </summary>
         public List<Trade>[] AllTrades
@@ -1501,6 +1619,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// incoming ticks from the system
         /// входящие тики из системы
         /// </summary>
         private void AddTick(Trade trade)
@@ -1508,8 +1627,8 @@ namespace OsEngine.Market.Servers.InteractivBrokers
             try
             {
                 BathTradeMarketDepthData(trade);
-
-                // сохраняем
+                ServerTime = trade.Time;
+                // save/сохраняем
                 if (_allTrades == null)
                 {
                     _allTrades = new List<Trade>[1];
@@ -1517,7 +1636,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                 }
                 else
                 {
-                    // сортируем сделки по хранилищам
+                    // sort trades by storages / сортируем сделки по хранилищам
                     List<Trade> myList = null;
                     bool isSave = false;
                     for (int i = 0; i < _allTrades.Length; i++)
@@ -1525,7 +1644,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                         if (_allTrades[i] != null && _allTrades[i].Count != 0 &&
                             _allTrades[i][0].SecurityNameCode == trade.SecurityNameCode)
                         {
-                            // если для этого инструметна уже есть хранилище, сохраняем и всё
+                            // if there is already storage for this instrument, we save/ если для этого инструметна уже есть хранилище, сохраняем и всё
                             _allTrades[i].Add(trade);
                             myList = _allTrades[i];
                             isSave = true;
@@ -1535,7 +1654,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
 
                     if (isSave == false)
                     {
-                        // хранилища для инструмента нет
+                        // there is no storage for the instrument / хранилища для инструмента нет
                         List<Trade>[] allTradesNew = new List<Trade>[_allTrades.Length + 1];
                         for (int i = 0; i < _allTrades.Length; i++)
                         {
@@ -1559,6 +1678,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// ticks came from the tick storege. Occurs immediately after loading.
         /// пришли тики из хранилища тиков. Происходит сразу после загрузки
         /// </summary>
         void _tickStorage_TickLoadedEvent(List<Trade>[] trades)
@@ -1567,6 +1687,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// take ticks by instrument
         /// взять тики по инструменту
         /// </summary>
         public List<Trade> GetAllTradesToSecurity(Security security)
@@ -1588,15 +1709,18 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// called when new trades appear by the instrument
         /// вызывается в момет появления новых трейдов по инструменту
         /// </summary>
         public event Action<List<Trade>> NewTradeEvent;
 
+// my trades
 //мои сделки
 
         private List<MyTrade> _myTrades;
 
         /// <summary>
+        /// my trades
         /// мои сделки
         /// </summary>
         public List<MyTrade> MyTrades
@@ -1615,13 +1739,16 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// called when my new deal comes
         /// вызывается когда приходит новая моя сделка
         /// </summary>
         public event Action<MyTrade> NewMyTradeEvent;
 
-//исполнение ордеров
+        //execution of orders
+        //исполнение ордеров
 
         /// <summary>
+        /// place of work thread on the queues of order execution and cancellation
         /// место работы потока на очередях исполнения заявок и их отмены
         /// </summary>
         private void ExecutorOrdersThreadArea()
@@ -1677,7 +1804,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                                                 minusVal += "0";
                                             }
                                             minusVal += "1";
-                                            order.Price -= Convert.ToDecimal(minusVal, new CultureInfo("en-US"));
+                                            order.Price -= minusVal.ToDecimal();
                                         }
                                         else
                                         {
@@ -1715,21 +1842,25 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// queue of orders for placing in the system
         /// очередь ордеров для выставления в систему
         /// </summary>
         private ConcurrentQueue<Order> _ordersToExecute;
 
         /// <summary>
+        /// queue of orders for cancelling from the system 
         /// очередь ордеров для отмены в системе
         /// </summary>
         private ConcurrentQueue<Order> _ordersToCansel;
 
         /// <summary>
+        /// orders in IB format
         /// ордера в формате IB
         /// </summary>
         private List<Order> _orders; 
 
         /// <summary>
+        /// execute order
         /// исполнить ордер
         /// </summary>
         public void ExecuteOrder(Order order)
@@ -1744,6 +1875,7 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// cancel order
         /// отменить ордер
         /// </summary>
         public void CanselOrder(Order order)
@@ -1767,6 +1899,11 @@ namespace OsEngine.Market.Servers.InteractivBrokers
                     return;
                 }
 
+                if (order.State == OrderStateType.Fail)
+                {
+                    osOrder.State = OrderStateType.Fail;
+                }
+
                 _ordersToSend.Enqueue(osOrder);
             }
             catch (Exception error)
@@ -1776,13 +1913,16 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// called when new order appears in the system
         /// вызывается когда в системе появляется новый ордер
         /// </summary>
         public event Action<Order> NewOrderIncomeEvent;
 
+// logging
 //обработка лога
 
         /// <summary>
+        /// add a new log message
         /// добавить в лог новое сообщение
         /// </summary>
         private void SendLogMessage(string message,LogMessageType type)
@@ -1794,11 +1934,13 @@ namespace OsEngine.Market.Servers.InteractivBrokers
         }
 
         /// <summary>
+        /// log manager
         /// менеджер лога
         /// </summary>
         private Log _logMaster;
 
         /// <summary>
+        /// outgoing log message
         /// исходящее сообщение для лога
         /// </summary>
         public event Action<string,LogMessageType> LogMessageEvent;
@@ -1806,16 +1948,19 @@ namespace OsEngine.Market.Servers.InteractivBrokers
     }
 
     /// <summary>
+    /// crutch class working in the process of creating my trades
     /// класс костыль работающий в процессе создания моих трейдов
     /// </summary>
     public class MyTradeCreate
     {
         /// <summary>
+        /// parent's order number
         /// номер ордера родителя
         /// </summary>
         public int idOrder;
 
         /// <summary>
+        /// parent's order volume at the time of my trade
         /// объём ордера родителя в момент выставления моего трейда
         /// </summary>
         public decimal FillOrderToCreateMyTrade;
@@ -1823,56 +1968,67 @@ namespace OsEngine.Market.Servers.InteractivBrokers
     }
 
     /// <summary>
+    /// security in IB format
     /// бумага в представлении Ib
     /// </summary>
     public class SecurityIb
     {
         /// <summary>
+        /// number
         /// номер
         /// </summary>
         public int ConId;
 
         /// <summary>
+        /// full name
         /// название полное
         /// </summary>
         public string Symbol;
 
         /// <summary>
+        /// name
         /// название
         /// </summary>
         public string LocalSymbol;
 
         /// <summary>
+        /// contract currency
         /// валюта контракта
         /// </summary>
         public string Currency;
 
         /// <summary>
+        /// exchange
         /// биржа
         /// </summary>
         public string Exchange;
 
         /// <summary>
+        /// main exchange
         /// основная биржа
         /// </summary>
         public string PrimaryExch;
 
         /// <summary>
+        /// strike
         /// страйк
         /// </summary>
         public double Strike;
 
         /// <summary>
+        /// instrument class
         /// класс инструмента
         /// </summary>
         public string TradingClass;
 
         /// <summary>
+        /// minimum price step
         /// минимальный шаг цены
         /// </summary>
         public double MinTick;
 
         /// <summary>
+        /// multiplier
         /// мультипликатор?
         /// </summary>
         public string Multiplier;

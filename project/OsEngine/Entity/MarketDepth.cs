@@ -1,5 +1,6 @@
 ﻿/*
- *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
+ * Your rights to use code governed by this license http://o-s-a.net/doc/license_simple_engine.pdf
+ * Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
 using System;
@@ -15,59 +16,65 @@ namespace OsEngine.Entity
             Bids = new List<MarketDepthLevel>();
         }
         /// <summary>
+        /// time to create a glass
         /// время создания стакана
         /// </summary>
         public DateTime Time;
 
         /// <summary>
+        /// levels of sales. best with index 0
         /// уровни продаж. лучшая с индексом 0
         /// </summary>
         public List<MarketDepthLevel> Asks;
 
         /// <summary>
+        /// purchase levels. best with index 0
         /// уровни покупок. лучшая с индексом 0
         /// </summary>
         public List<MarketDepthLevel> Bids;
 
         /// <summary>
+        /// total sales volume
         /// суммарный объём в продажах
         /// </summary>
-        public int AskSummVolume
+        public decimal AskSummVolume
         {
-
             get
             {
-                int vol = 0;
+                decimal vol = 0;
                 for (int i = 0; Asks != null && i < Asks.Count; i++)
                 {
-                    vol += Convert.ToInt32(Asks[i].Ask);
+                    vol += Asks[i].Ask;
                 }
                 return vol;
             }
         }
 
         /// <summary>
+        /// total amount in purchases
         /// суммарный объём в покупках
         /// </summary>
-        public int BidSummVolume
+        public decimal BidSummVolume
         {
             get
             {
-                int vol = 0;
+                decimal vol = 0;
                 for (int i = 0; Bids != null && i < Bids.Count; i++)
                 {
-                    vol += Convert.ToInt32(Bids[i].Bid);
+                    vol += Bids[i].Bid;
                 }
                 return vol;
             }
         }
 
         /// <summary>
+        /// security that owns to glass
         /// бумага, которой принадлежит стакан
         /// </summary>
         public string SecurityNameCode;
 
         /// <summary>
+        /// set the cup from the stored value
         /// установить стакан из сохранённого значения
         /// </summary>
         public void SetMarketDepthFromString(string str)
@@ -118,9 +125,10 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// take the save string for the whole glass
         /// взять строку сохранения для всего стакана
         /// </summary>
-        /// <param name="depth">глубина стакана которую нужно сохранить</param>
+        /// <param name="depth">depth of glass to keep/глубина стакана которую нужно сохранить</param>
         public string GetSaveStringToAllDepfh(int depth)
         {
             // NameSecurity_Time_Bids_Asks
@@ -154,6 +162,7 @@ namespace OsEngine.Entity
         }
 
         /// <summary>
+        /// take a "deep" copy of the glass
         /// взять "глубокую" копию стакана
         /// </summary>
         public MarketDepth GetCopy()
@@ -187,27 +196,32 @@ namespace OsEngine.Entity
     }
 
     /// <summary>
+    /// class representing one price level in a glass
     /// класс представляющий один ценовой уровень в стакане
     /// </summary>
     public class MarketDepthLevel
     {
 
         /// <summary>
+        /// number of contracts for sale at this price level
         /// количество контрактов на продажу по этому уровню цены
         /// </summary>
         public decimal Ask;
 
         /// <summary>
+        /// \number of purchase contracts at this price level
         /// количество контрактов на покупку по этому уровню цены
         /// </summary>
         public decimal Bid;
 
         /// <summary>
+        /// price
         /// цена
         /// </summary>
         public decimal Price;
 
         /// <summary>
+        /// Unique price level number, required for working with BitMex
         /// уникальный номер ценового уровня, необходим для работы с BitMex
         /// </summary>
         public long Id;

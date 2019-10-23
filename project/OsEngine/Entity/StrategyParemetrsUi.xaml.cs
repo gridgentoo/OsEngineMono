@@ -1,11 +1,17 @@
-﻿
+﻿/*
+ * Your rights to use code governed by this license http://o-s-a.net/doc/license_simple_engine.pdf
+ * Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
+*/
+
 using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
+using OsEngine.Language;
 
 namespace OsEngine.Entity
 {
     /// <summary>
+    /// Interaction logic for ParemetrsUi.xaml
     /// Логика взаимодействия для ParemetrsUi.xaml
     /// </summary>
     public partial class ParemetrsUi 
@@ -20,34 +26,24 @@ namespace OsEngine.Entity
 
             CreateTable();
             PaintTable();
+
+            ButtonAccept.Content = OsLocalization.Entity.ButtonAccept;
+            Title = OsLocalization.Entity.TitleParametersUi;
         }
 
         private DataGridView _grid;
 
         private void CreateTable()
         {
-            _grid = new DataGridView();
-
-            _grid.AllowUserToOrderColumns = true;
-            _grid.AllowUserToResizeRows = true;
-            _grid.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
-            _grid.AllowUserToDeleteRows = false;
-            _grid.AllowUserToAddRows = false;
-            _grid.RowHeadersVisible = false;
-            _grid.SelectionMode = DataGridViewSelectionMode.CellSelect;
-            _grid.MultiSelect = false;
-
-            DataGridViewCellStyle style = new DataGridViewCellStyle();
-            style.Alignment = DataGridViewContentAlignment.TopLeft;
-            style.WrapMode = DataGridViewTriState.True;
-            _grid.DefaultCellStyle = style;
+            _grid = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.FullRowSelect,
+                DataGridViewAutoSizeRowsMode.None);
 
             DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
-            cell0.Style = style;
+            cell0.Style = _grid.DefaultCellStyle;
 
             DataGridViewColumn column0 = new DataGridViewColumn();
             column0.CellTemplate = cell0;
-            column0.HeaderText = @"Название параметра";
+            column0.HeaderText = OsLocalization.Entity.ParametersColumn1;
             column0.ReadOnly = true;
             column0.Width = 150;
 
@@ -55,7 +51,7 @@ namespace OsEngine.Entity
 
             DataGridViewColumn column1 = new DataGridViewColumn();
             column1.CellTemplate = cell0;
-            column1.HeaderText = @"Текущее значение";
+            column1.HeaderText = OsLocalization.Entity.ParametersColumn2;
             column1.ReadOnly = false;
             column1.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             _grid.Columns.Add(column1);

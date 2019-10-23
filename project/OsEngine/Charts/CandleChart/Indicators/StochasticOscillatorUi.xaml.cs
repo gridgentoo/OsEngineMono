@@ -1,33 +1,39 @@
 ﻿/*
+ * Your rights to use code governed by this license http://o-s-a.net/doc/license_simple_engine.pdf
  *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 using System;
 using System.Windows;
 using System.Windows.Forms;
+using OsEngine.Language;
 using MessageBox = System.Windows.MessageBox;
 using TextBox = System.Windows.Forms.TextBox;
 
 namespace OsEngine.Charts.CandleChart.Indicators
 {
     /// <summary>
+    /// Interaction logic  for StochasticOscillatorUi.xaml
     /// Логика взаимодействия для StochasticOscillatorUi.xaml
     /// </summary>
     public partial class StochasticOscillatorUi 
     {
-       /// <summary>
+        /// <summary>
+        /// indicator
         /// индикатор
         /// </summary>
         private StochasticOscillator _so;
 
         /// <summary>
+        /// whether indicator settings have been changed
         /// изменялись ли настройки индикатора
         /// </summary>
         public bool IsChange;
 
         /// <summary>
+        /// constructor
         /// конструктор
         /// </summary>
-        /// <param name="so">индикатор для настроек</param>
+        /// <param name="so">configuration indicator/индикатор для настроек</param>
         public StochasticOscillatorUi(StochasticOscillator so)
         {
             InitializeComponent();
@@ -53,9 +59,23 @@ namespace OsEngine.Charts.CandleChart.Indicators
             Movingbox.SelectedItem = _so.TypeCalculationAverage;
 
             Movingbox.SelectedItem = _so.TypeIndicator;
+
+            ButtonColor1.Content = OsLocalization.Charts.LabelButtonIndicatorColor + " 1";
+            ButtonColor2.Content = OsLocalization.Charts.LabelButtonIndicatorColor + " 2";
+
+            CheckBoxPaintOnOff.Content = OsLocalization.Charts.LabelPaintIntdicatorIsVisible;
+            ButtonAccept.Content = OsLocalization.Charts.LabelButtonIndicatorAccept;
+
+            LabelIndicatorPeriod1.Content = OsLocalization.Charts.LabelIndicatorPeriod + " 1";
+            LabelIndicatorPeriod2.Content = OsLocalization.Charts.LabelIndicatorPeriod + " 2";
+            LabelIndicatorPeriod3.Content = OsLocalization.Charts.LabelIndicatorPeriod + " 3";
+
+            LabelIndicatorSmaType.Content = OsLocalization.Charts.LabelIndicatorSmaType;
+
         }
 
         /// <summary>
+        /// accept button
         /// кнопка принять
         /// </summary>
         private void ButtonAccept_Click(object sender, RoutedEventArgs e)
@@ -93,6 +113,7 @@ namespace OsEngine.Charts.CandleChart.Indicators
         }
 
         /// <summary>
+        /// color setting button
         /// кнопка настроить цвет
         /// </summary>
         private void ButtonColor_Click(object sender, RoutedEventArgs e)

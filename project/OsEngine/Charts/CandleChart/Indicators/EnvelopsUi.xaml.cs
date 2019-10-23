@@ -1,31 +1,37 @@
 ﻿/*
+ * Your rights to use code governed by this license http://o-s-a.net/doc/license_simple_engine.pdf
  *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 using System;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Forms;
+using OsEngine.Language;
 using MessageBox = System.Windows.MessageBox;
 using TextBox = System.Windows.Forms.TextBox;
 
 namespace OsEngine.Charts.CandleChart.Indicators
 {
     /// <summary>
+    /// Interaction logic  for EnvelopesUi.xaml
     /// Логика взаимодействия для EnvelopesUi.xaml
     /// </summary>
     public partial class EnvelopsUi
     {
         /// <summary>
+        /// indicator
         /// индикатор
         /// </summary>
-        private Envelops _envelops; 
-         
+        private Envelops _envelops;
+
         /// <summary>
+        /// whether indicator settings have been changed
         /// изменялись ли настройки индикатора
         /// </summary>
         public bool IsChange;
 
         /// <summary>
+        /// constructor
         /// конструктор
         /// </summary>
         public EnvelopsUi(Envelops envelops)
@@ -40,9 +46,18 @@ namespace OsEngine.Charts.CandleChart.Indicators
             HostColorDown.Child.BackColor = _envelops.ColorDown;
             TextBoxDeviation.Text = _envelops.Deviation.ToString(new CultureInfo("ru-RU"));
             CheckBoxPaintOnOff.IsChecked = _envelops.PaintOn;
+
+            ButtonColorUp.Content = OsLocalization.Charts.LabelButtonIndicatorColorUp;
+            ButtonColorDown.Content = OsLocalization.Charts.LabelButtonIndicatorColorDown;
+            CheckBoxPaintOnOff.Content = OsLocalization.Charts.LabelPaintIntdicatorIsVisible;
+            ButtonAccept.Content = OsLocalization.Charts.LabelButtonIndicatorAccept;
+            LabelIndicatorDeviation.Content = OsLocalization.Charts.LabelIndicatorDeviation;
+            ButtonMa.Content = OsLocalization.Charts.LabelIndicatorSettingsSma;
+
         }
 
         /// <summary>
+        /// accept button
         /// кнопка принять
         /// </summary>
         private void ButtonAccept_Click(object sender, RoutedEventArgs e)
@@ -72,6 +87,7 @@ namespace OsEngine.Charts.CandleChart.Indicators
         }
 
         /// <summary>
+        /// call up moving average settings
         /// вызвать настройки скользящей средней
         /// </summary>
         private void ButtonMa_Click(object sender, RoutedEventArgs e)
@@ -80,6 +96,7 @@ namespace OsEngine.Charts.CandleChart.Indicators
         }
 
         /// <summary>
+        /// top line color
         /// цвет верхней линии
         /// </summary>
         private void ButtonColorUp_Click(object sender, RoutedEventArgs e)
@@ -91,6 +108,7 @@ namespace OsEngine.Charts.CandleChart.Indicators
         }
 
         /// <summary>
+        /// bottom line color
         /// цвет нижней линии
         /// </summary>
         private void ButtonColorDown_Click(object sender, RoutedEventArgs e)

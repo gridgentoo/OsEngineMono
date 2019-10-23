@@ -1,5 +1,6 @@
 ﻿/*
- *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
+ * Your rights to use code governed by this license https://github.com/AlexWan/OsEngine/blob/master/LICENSE
+ * Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
 using System;
@@ -13,8 +14,9 @@ using System.Windows.Shapes;
 using OsEngine.Alerts;
 using OsEngine.Entity;
 using OsEngine.Journal.Internal;
+using OsEngine.Language;
 using OsEngine.Logging;
-using OsEngine.Market.Servers;
+using OsEngine.Market;
 using OsEngine.OsTrader.Panels.Tab;
 using OsEngine.OsTrader.RiskManager;
 
@@ -22,47 +24,71 @@ namespace OsEngine.OsTrader.Panels
 {
 
     /// <summary>
-    /// типы вкладок для панели
+    /// types of tabs for the robot / 
+    /// типы вкладок для робота
     /// </summary>
     public enum BotTabType
     {
         /// <summary>
+        /// for trading one instrument / 
         /// простая для торговли одного инструмента
         /// </summary>
         Simple,
 
         /// <summary>
+        /// index / 
         /// индекс
         /// </summary>
-        Index
-    }
-
-    public abstract class BotPanel
-    {
+        Index,
 
         /// <summary>
+        /// clusters / 
+        /// кластеры
+        /// </summary>
+        Cluster
+
+    }
+
+    /// <summary>
+    /// Robot / 
+    /// Робот
+    /// </summary>
+    public abstract class BotPanel
+    {
+        /// <summary>
+        /// constructor / 
         /// конструктор
         /// </summary>
-        protected BotPanel(string name)
+        protected BotPanel(string name, StartProgram startProgram)
         {
-             NameStrategyUniq = name;
+            NameStrategyUniq = name;
+            StartProgram = startProgram;
+
             ReloadTab();
 
-            _riskManager = new RiskManager.RiskManager(NameStrategyUniq);
+            _riskManager = new RiskManager.RiskManager(NameStrategyUniq, startProgram);
             _riskManager.RiskManagerAlarmEvent += _riskManager_RiskManagerAlarmEvent;
 
-            _log = new Log(name);
+            _log = new Log(name, startProgram);
             _log.Listen(this);
         }
 
         /// <summary>
-        /// уникальное имя робота. Передаётся в конструктор. Участвует в процессе сохранения всех данных связанных с ботом
+        /// unique robot name / 
+        /// уникальное имя робота
         /// </summary>
         public string NameStrategyUniq;
 
-// управление
+        /// <summary>
+        /// the program that launched the robot. Tester  Robot  Optimizer / 
+        /// программа которая запустила робота. Тестер  Робот  Оптимизатор
+        /// </summary>
+        public StartProgram StartProgram;
+
+// control / управление
 
         /// <summary>
+        /// take logs panel / 
         /// взять журналы панели
         /// </summary>
         public List<Journal.Journal> GetJournals()
@@ -81,6 +107,7 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// show the chart window with deals / 
         /// показать окно графиков со сделками
         /// </summary>
         public void ShowChartDialog()
@@ -102,11 +129,13 @@ namespace OsEngine.OsTrader.Panels
 
 
         /// <summary>
+        /// is drawing included / 
         /// включена ли прорисовка 
         /// </summary>
         private bool _isPainting;
 
         /// <summary>
+        /// start drawing this robot / 
         /// начать прорисовку этого робота
         /// </summary> 
         public void StartPaint(WindowsFormsHost hostChart, WindowsFormsHost glass, WindowsFormsHost hostOpenDeals,
@@ -118,7 +147,6 @@ namespace OsEngine.OsTrader.Panels
                 return;
             }
 
-            _tabBotTab = tabBotTab;
             _tabBotTab = tabBotTab;
             _hostChart = hostChart;
             _hostGlass = glass;
@@ -155,7 +183,7 @@ namespace OsEngine.OsTrader.Panels
                         && _tabBotTab.Items.Count != 0
                         && _tabBotTab.SelectedItem != null)
                     {
-                        ChangeActivTab(Convert.ToInt32(_tabBotTab.SelectedItem.ToString()));
+                        ChangeActivTab(_tabBotTab.SelectedIndex);
                     }
                     else if (_tabBotTab != null
                              && _tabBotTab.Items.Count != 0
@@ -172,6 +200,7 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// stop drawing this robot / 
         /// остановить прорисовку этого робота
         /// </summary>
         public void StopPaint()
@@ -224,11 +253,13 @@ namespace OsEngine.OsTrader.Panels
         private Grid _gridChartControlPanel;
 
         /// <summary>
-        /// название класса бота.
+        /// bot name / 
+        /// название робота
         /// </summary>
         public abstract string GetNameStrategyType();
 
         /// <summary>
+        /// has the robot connected to the exchange of all tabs / 
         /// подключился ли робот к бирже всеми вкладкам
         /// </summary>
         public bool IsConnected
@@ -261,7 +292,8 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
-        /// очистить журнал и графики
+        /// clear data / 
+        /// очистить данные
         /// </summary>
         public void Clear()
         {
@@ -275,19 +307,7 @@ namespace OsEngine.OsTrader.Panels
 
                 for (int i = 0; i < _botTabs.Count; i++)
                 {
-                    if (_botTabs[i].GetType().Name == "BotTabSimple")
-                    {
-                        BotTabSimple bot = (BotTabSimple)_botTabs[i];
-                        bot.ClearAceberg();
-                        bot.BuyAtStopCanсel();
-                        bot.SellAtStopCanсel();
-                        bot.Clear();
-                    }
-                    if (_botTabs[i].GetType().Name == "BotTabIndex")
-                    {
-                        BotTabIndex bot = (BotTabIndex)_botTabs[i];
-                        bot.Clear();
-                    }
+                    _botTabs[i].Clear();
                 }
             }
             catch (Exception error)
@@ -297,6 +317,7 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// remove the robot and all child structures / 
         /// удалить робота и все дочерние структуры
         /// </summary>
         public void Delete()
@@ -331,9 +352,10 @@ namespace OsEngine.OsTrader.Panels
             }
         }
 
-// показатели торговли робота
+        // robot trading figures / показатели торговли робота
 
         /// <summary>
+        /// total profit / 
         /// итоговая прибыль
         /// </summary>
         public decimal TotalProfitInPersent
@@ -364,6 +386,7 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// average profit from the transaction / 
         /// средняя прибыль со сделки
         /// </summary>
         public decimal MiddleProfitInPersent
@@ -394,6 +417,7 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// profit factor / 
         /// профит фактор
         /// </summary>
         public decimal ProfitFactor
@@ -424,6 +448,7 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// maximum drawdown / 
         /// максимальная просадка
         /// </summary>
         public decimal MaxDrowDown
@@ -454,6 +479,7 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// profit position count / 
         /// кол-во выигранных сделок
         /// </summary>
         public decimal WinPositionPersent
@@ -488,9 +514,45 @@ namespace OsEngine.OsTrader.Panels
             }
         }
 
-// работа с параметрами стратегии
+        /// <summary>
+        /// the number of positions at the tabs of the robot / 
+        /// количество позиций у вкладок робота
+        /// </summary>
+        public int PositionsCount
+        {
+            get
+            {
+                List<Journal.Journal> journals = GetJournals();
+
+                if (journals == null ||
+                    journals.Count == 0)
+                {
+                    return 0;
+                }
+
+                decimal winPoses = 0;
+
+                decimal allPoses = 0;
+
+                List<Position> pos = new List<Position>();
+
+                for (int i = 0; i < journals.Count; i++)
+                {
+                    if (journals[i].AllPosition == null ||
+                        journals[i].AllPosition.Count == 0)
+                    {
+                        continue;
+                    }
+                    pos.AddRange(journals[i].AllPosition);
+                }
+                return pos.Count;
+            }
+        }
+
+        // working with strategy parameters / работа с параметрами стратегии
 
         /// <summary>
+        /// show parameter settings window / 
         /// показать окно настроек параметров
         /// </summary>
         public void ShowParametrDialog()
@@ -498,7 +560,7 @@ namespace OsEngine.OsTrader.Panels
             if (_parameters == null ||
                 _parameters.Count == 0)
             {
-                MessageBox.Show("У данной стратегии нет встроенных параметров для настройки");
+                MessageBox.Show(OsLocalization.Trader.Label51);
                 return;
             }
             ParemetrsUi ui = new ParemetrsUi(_parameters);
@@ -506,89 +568,93 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// create a Decimal type parameter / 
         /// создать параметр типа Decimal
         /// </summary>
-        /// <param name="name">Имя параметра</param>
-        /// <param name="value">Значение по умолчанию</param>
-        /// <param name="start">Первое значение при оптимизации</param>
-        /// <param name="stop">Последнее значение при оптимизации</param>
-        /// <param name="step">Шаг изменения при оптимизации</param>
+        /// <param name="name">param name / Имя параметра</param>
+        /// <param name="value">default value / Значение по умолчанию</param>
+        /// <param name="start">first value / Первое значение при оптимизации</param>
+        /// <param name="stop">last value / Последнее значение при оптимизации</param>
+        /// <param name="step">value step / Шаг изменения при оптимизации</param>
         public StrategyParameterDecimal CreateParameter(string name, decimal value, decimal start, decimal stop, decimal step) 
         {
             StrategyParameterDecimal newParameter = new StrategyParameterDecimal(name, value, start, stop, step);
 
             if (_parameters.Find(p => p.Name == name)!= null)
             {
-                throw new Exception("Ахтунг! Параметр с таким именем уже существует!");
+                throw new Exception(OsLocalization.Trader.Label52);
             }
 
             return (StrategyParameterDecimal)LoadParameterValues(newParameter);
         }
 
         /// <summary>
+        /// create int parameter / 
         /// создать параметр типа Int
         /// </summary>
-        /// <param name="name">Имя параметра</param>
-        /// <param name="value">Значение по умолчанию</param>
-        /// <param name="start">Первое значение при оптимизации</param>
-        /// <param name="stop">Последнее значение при оптимизации</param>
-        /// <param name="step">Шаг изменения при оптимизации</param>
+        /// <param name="name">param name / Имя параметра</param>
+        /// <param name="value">default value / Значение по умолчанию</param>
+        /// <param name="start">first value / Первое значение при оптимизации</param>
+        /// <param name="stop">last value / Последнее значение при оптимизации</param>
+        /// <param name="step">value step / Шаг изменения при оптимизации</param>
         public StrategyParameterInt CreateParameter(string name, int value, int start, int stop, int step)
         {
             StrategyParameterInt newParameter = new StrategyParameterInt(name, value, start, stop, step);
 
             if (_parameters.Find(p => p.Name == name) != null)
             {
-                throw new Exception("Ахтунг! Параметр с таким именем уже существует!");
+                throw new Exception(OsLocalization.Trader.Label52);
             }
 
             return (StrategyParameterInt)LoadParameterValues(newParameter);
         }
 
         /// <summary>
+        /// create string parameter / 
         /// создать параметр типа String
         /// </summary>
-        /// <param name="name">Имя параметра</param>
-        /// <param name="value">Значение по умолчанию</param>
-        /// <param name="collection">Возможные значения для параметра</param>
+        /// <param name="name">param name / Имя параметра</param>
+        /// <param name="value">default value / Значение по умолчанию</param>
+        /// <param name="collection">values / Возможные значения для параметра</param>
         public StrategyParameterString CreateParameter(string name, string value, string[] collection)
         {
             StrategyParameterString newParameter = new StrategyParameterString(name, value, collection.ToList());
 
             if (_parameters.Find(p => p.Name == name) != null)
             {
-                throw new Exception("Ахтунг! Параметр с таким именем уже существует!");
+                throw new Exception(OsLocalization.Trader.Label52);
             }
 
             return (StrategyParameterString)LoadParameterValues(newParameter);
         }
 
         /// <summary>
+        /// create bool type parameter / 
         /// создать параметр типа Bool
         /// </summary>
-        /// <param name="name">Имя параметра</param>
-        /// <param name="value">Значение по умолчанию</param>
+        /// <param name="name">param name / Имя параметра</param>
+        /// <param name="value">default value / Значение по умолчанию</param>
         public StrategyParameterBool CreateParameter(string name, bool value)
         {
             StrategyParameterBool newParameter = new StrategyParameterBool(name, value);
 
             if (_parameters.Find(p => p.Name == name) != null)
             {
-                throw new Exception("Ахтунг! Параметр с таким именем уже существует!");
+                throw new Exception(OsLocalization.Trader.Label52);
             }
 
             return (StrategyParameterBool)LoadParameterValues(newParameter);
         }
 
         /// <summary>
+        /// load parameter settings / 
         /// загрузить настройки параметра
         /// </summary>
-        /// <param name="newParameter">параметр настройки которого нужно загрузить</param>
-        /// <returns></returns>
+        /// <param name="newParameter">setting parameter you want to load / параметр настройки которого нужно загрузить</param>
         private IIStrategyParameter LoadParameterValues(IIStrategyParameter  newParameter)
         {
-            if (ServerMaster.StartProgram != ServerStartProgramm.IsOsOptimizer)
-            {// запущен тестер или робот, в котором можно менять параметры вручную
+            if (StartProgram != StartProgram.IsOsOptimizer)
+            {
                 GetValueParameterSaveByUser(newParameter);
             }
 
@@ -600,9 +666,9 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// load parameter settings from file / 
         /// загрузить настройки параметра из файла
         /// </summary>
-        /// <param name="parameter"></param>
         private void GetValueParameterSaveByUser(IIStrategyParameter parameter)
         {
             if (!File.Exists(@"Engine\" + NameStrategyUniq + @"Parametrs.txt"))
@@ -627,11 +693,12 @@ namespace OsEngine.OsTrader.Panels
             }
             catch (Exception)
             {
-                // отправить в лог
+                // ignore
             }
         }
 
         /// <summary>
+        /// the list of options available in the panel / 
         /// список параметров доступных у панели
         /// </summary>
         public List<IIStrategyParameter> Parameters
@@ -641,11 +708,12 @@ namespace OsEngine.OsTrader.Panels
         private List<IIStrategyParameter> _parameters = new List<IIStrategyParameter>();
 
         /// <summary>
+        /// parameter has changed settings / 
         /// у параметра изменились настройки
         /// </summary>
         void Parameter_ValueChange()
         {
-            if (ServerMaster.StartProgram != ServerStartProgramm.IsOsOptimizer)
+            if (StartProgram != StartProgram.IsOsOptimizer)
             {
                 SaveParametrs();
             }
@@ -657,6 +725,7 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// save parameter values / 
         /// сохранить значения параметров
         /// </summary>
         private void SaveParametrs()
@@ -681,25 +750,28 @@ namespace OsEngine.OsTrader.Panels
             }
             catch (Exception)
             {
-                // отправить в лог
+                // ignore
             }
 
 
         }
 
         /// <summary>
+        /// parameter has changed state / 
         /// у параметра изменилось состояние
         /// </summary>
         public event Action ParametrsChangeByUser;
 
-// риск менеджер панели
+        // risk manager panel / риск менеджер панели
 
         /// <summary>
+        /// risk manager / 
         /// риск менеджер
         /// </summary>
         private RiskManager.RiskManager _riskManager;
 
         /// <summary>
+        /// an alert came from a risk manager / 
         /// пришло оповещение от риск менеджера
         /// </summary>
         void _riskManager_RiskManagerAlarmEvent(RiskManagerReactionType reactionType)
@@ -712,7 +784,7 @@ namespace OsEngine.OsTrader.Panels
                 }
                 else if (reactionType == RiskManagerReactionType.ShowDialog)
                 {
-                    string message = "Риск менеджер предупреждает о превышении дневного лимита убытков!";
+                    string message = OsLocalization.Trader.Label53;
                     ShowMessageInNewThread(message);
                 }
             }
@@ -723,6 +795,7 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// draw a window with a message in a new thread
         /// прорисовать окошко с сообщением в новом потоке
         /// </summary>
         private void ShowMessageInNewThread(string message)
@@ -745,13 +818,14 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// emergency closing of all positions / 
         /// экстренное закрытие всех позиций
         /// </summary>
         public void CloseAndOffAllToMarket() 
         {
             try
             {
-                string message = "Риск менеджер предупреждает о превышении дневного лимита убытков! Дальнейшие торги остановлены! Робот: " + NameStrategyUniq;
+                string message = OsLocalization.Trader.Label54 + NameStrategyUniq;
                 ShowMessageInNewThread(message);
 
                 for (int i = 0; i < _botTabs.Count; i++)
@@ -770,24 +844,28 @@ namespace OsEngine.OsTrader.Panels
             }
         }
 
-// управление вкладками
+        // tab management / управление вкладками
 
         /// <summary>
+        /// tabbed tabs / 
         /// загруженые в панель вкладки
         /// </summary>
         private List<IIBotTab> _botTabs;
 
         /// <summary>
+        /// active tab
         /// активная вкладка
         /// </summary>
         public IIBotTab ActivTab;
 
         /// <summary>
+        /// control which tabs are located / 
         /// контрол на котором расположены вкладки
         /// </summary>
         private TabControl _tabBotTab;
 
         /// <summary>
+        /// open tab number / 
         /// номер открытой вкладки
         /// </summary>
         public int ActivTabNumber
@@ -815,6 +893,7 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// trade tabs / 
         /// простые вкладки для торговли
         /// </summary>
         public List<BotTabSimple> TabsSimple
@@ -844,6 +923,7 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// index tabs
         /// вкладки со спредами между инструментами
         /// </summary>
         public List<BotTabIndex> TabsIndex
@@ -873,6 +953,37 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// clustered tabs / 
+        /// вкладки с кластерными графиками
+        /// </summary>
+        public List<BotTabCluster> TabsCluster
+        {
+            get
+            {
+                try
+                {
+                    List<BotTabCluster> tabSpreads = new List<BotTabCluster>();
+
+                    for (int i = 0; _botTabs != null && i < _botTabs.Count; i++)
+                    {
+                        if (_botTabs[i].GetType().Name == "BotTabCluster")
+                        {
+                            tabSpreads.Add((BotTabCluster)_botTabs[i]);
+                        }
+                    }
+
+                    return tabSpreads;
+                }
+                catch (Exception error)
+                {
+                    SendNewLogMessage(error.ToString(), LogMessageType.Error);
+                }
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// user toggled tabs / 
         /// пользователь переключил вкладки
         /// </summary>
         void _tabBotTab_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -881,7 +992,7 @@ namespace OsEngine.OsTrader.Panels
             {
                 if (_tabBotTab != null && _tabBotTab.Items.Count != 0)
                 {
-                    ChangeActivTab(Convert.ToInt32(_tabBotTab.SelectedItem.ToString()));
+                    ChangeActivTab(_tabBotTab.SelectedIndex);
                 }
             }
             catch (Exception error)
@@ -891,9 +1002,9 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// create tab / 
         /// создать вкладку
         /// </summary>
-        /// <param name="tabType">тип вкладки</param>
         public void TabCreate(BotTabType tabType)
         {
             try
@@ -913,8 +1024,6 @@ namespace OsEngine.OsTrader.Panels
 
                 if (_botTabs != null && _botTabs.Find(strategy => strategy.TabName == nameTab) != null)
                 {
-                    // если мы создаём вкладку программно, то возможно это не первая загрузка и
-                    // она уже подгрузилась из сохранения. И тогда мы просто выходим
                     return;
                 }
 
@@ -926,11 +1035,15 @@ namespace OsEngine.OsTrader.Panels
 
                 if (tabType == BotTabType.Simple)
                 {
-                    newTab = new BotTabSimple(nameTab);
+                    newTab = new BotTabSimple(nameTab, StartProgram);
                 }
                 else if (tabType == BotTabType.Index)
                 {
-                    newTab = new BotTabIndex(nameTab);
+                    newTab = new BotTabIndex(nameTab, StartProgram);
+                }
+                else if (tabType == BotTabType.Cluster)
+                {
+                    newTab = new BotTabCluster(nameTab, StartProgram);
                 }
                 else
                 {
@@ -953,6 +1066,7 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// delete active tab / 
         /// удалить активную вкладку
         /// </summary>
         public void TabDelete()
@@ -980,9 +1094,41 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// delete tab for num / 
+        /// удалить вкладку по номеру
+        /// </summary>
+        public void TabDelete(int index)
+        {
+            try
+            {
+                if (ActivTab == null)
+                {
+                    return;
+                }
+
+                if (index >= _botTabs.Count)
+                {
+                    return;
+                }
+
+                _botTabs.RemoveAt(index);
+                if (_botTabs != null && _botTabs.Count != 0)
+                {
+                    ChangeActivTab(0);
+                }
+
+                ReloadTab();
+            }
+            catch (Exception error)
+            {
+                SendNewLogMessage(error.ToString(), LogMessageType.Error);
+            }
+        }
+
+        /// <summary>
+        /// set new active tab / 
         /// установить новую активную вкладку
         /// </summary>
-        /// <param name="tabNumber">номер вкладки</param>
         private void ChangeActivTab(int tabNumber)
         {
             try
@@ -1019,8 +1165,10 @@ namespace OsEngine.OsTrader.Panels
                 {
                     ((BotTabIndex)ActivTab).StartPaint(_hostChart, _rectangle);
                 }
-
-                
+                else if (ActivTab.GetType().Name == "BotTabCluster")
+                {
+                    ((BotTabCluster)ActivTab).StartPaint(_hostChart, _rectangle);
+                }
             }
             catch (Exception error)
             {
@@ -1030,6 +1178,7 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// reload tabs on control / 
         /// перезагрузить вкладки на контроле
         /// </summary>
         private void ReloadTab()
@@ -1056,7 +1205,8 @@ namespace OsEngine.OsTrader.Panels
                     {
                         for (int i = 0; i < _botTabs.Count; i++)
                         {
-                            _tabBotTab.Items.Add(i);
+                            _tabBotTab.Items.Add(" "+ (i+1));
+                         
                         }
                     }
 
@@ -1084,10 +1234,11 @@ namespace OsEngine.OsTrader.Panels
             }
         }
 
-// вызыв окон управления
+        // call control windows / вызыв окон управления
 
 
         /// <summary>
+        /// show general risk manager window / 
         /// показать окно общего для панели рискМенеджера
         /// </summary>
         public void ShowPanelRiskManagerDialog()
@@ -1107,15 +1258,17 @@ namespace OsEngine.OsTrader.Panels
         }
 
         /// <summary>
+        /// show individual settings / 
         /// показать индивидуальные настройки
         /// </summary>
         public abstract void ShowIndividualSettingsDialog();
 
-        // сообщения в лог 
+        // log / сообщения в лог 
 
         private Log _log;
 
         /// <summary>
+        /// send new message / 
         /// выслать новое сообщение на верх
         /// </summary>
         private void SendNewLogMessage(string message, LogMessageType type)
@@ -1125,17 +1278,19 @@ namespace OsEngine.OsTrader.Panels
                 LogMessageEvent(message, type);
             }
             else if (type == LogMessageType.Error)
-            { // если на нас никто не подписан и в логе ошибка
+            { 
                 System.Windows.MessageBox.Show(message);
             }
         }
 
         /// <summary>
+        /// log message event
         /// исходящее сообщение для лога
         /// </summary>
         public event Action<string, LogMessageType> LogMessageEvent;
 
         /// <summary>
+        /// delete bot event
         /// событие удаления робота
         /// </summary>
         public event Action DeleteEvent;

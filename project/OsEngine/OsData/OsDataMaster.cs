@@ -1,18 +1,20 @@
 ﻿/*
- *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
+ * Your rights to use code governed by this license https://github.com/AlexWan/OsEngine/blob/master/LICENSE
+ * Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
+using OsEngine.Entity;
+using OsEngine.Language;
+using OsEngine.Logging;
+using OsEngine.Market;
+using OsEngine.Market.Servers;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
-using System.Linq;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Forms.Integration;
-using OsEngine.Entity;
-using OsEngine.Logging;
-using OsEngine.Market.Servers;
 using MessageBox = System.Windows.Forms.MessageBox;
 using Point = System.Drawing.Point;
 
@@ -20,20 +22,20 @@ namespace OsEngine.OsData
 {
 
     /// <summary>
-    /// мастер хранения сетов 
+    /// Set Storage Wizard/мастер хранения сетов 
     /// </summary>
     public class OsDataMaster
     {
         /// <summary>
-        /// конструктор
+        /// constructor/конструктор
         /// </summary>
-        /// <param name="hostChart">хост для чарта</param>
-        /// <param name="hostLog">хост для лога</param>
-        /// <param name="hostSource">хост для источников</param>
-        /// <param name="hostSets">хост для сетов</param>
-        /// <param name="comboBoxSecurity">меню выбора бумаг</param>
-        /// <param name="comboBoxTimeFrame">меню выбора таймфрейма</param>
-        /// <param name="rectangle">квадрат для подложки</param>
+        /// <param name="hostChart">chart host/хост для чарта</param>
+        /// <param name="hostLog">log host/хост для лога</param>
+        /// <param name="hostSource">source host/хост для источников</param>
+        /// <param name="hostSets">host for sets/хост для сетов</param>
+        /// <param name="comboBoxSecurity">paper selection menu/меню выбора бумаг</param>
+        /// <param name="comboBoxTimeFrame">time frame selection menu/меню выбора таймфрейма</param>
+        /// <param name="rectangle">square for substrate/квадрат для подложки</param>
         public OsDataMaster(WindowsFormsHost hostChart, WindowsFormsHost hostLog,
             WindowsFormsHost hostSource, WindowsFormsHost hostSets, System.Windows.Controls.ComboBox comboBoxSecurity,
             System.Windows.Controls.ComboBox comboBoxTimeFrame, System.Windows.Shapes.Rectangle rectangle)
@@ -45,7 +47,7 @@ namespace OsEngine.OsData
             _comboBoxTimeFrame = comboBoxTimeFrame;
             _rectangle = rectangle;
 
-            _log = new Log("OsDataMaster");
+            _log = new Log("OsDataMaster", StartProgram.IsOsData);
             _log.StartPaint(hostLog);
             _log.Listen(this);
 
@@ -61,17 +63,22 @@ namespace OsEngine.OsData
             ServerMaster.ServerCreateEvent += ServerMaster_ServerCreateEvent;
         }
 
-        void ServerMaster_ServerCreateEvent()
+        void ServerMaster_ServerCreateEvent(IServer server)
         {
             List<IServer> servers = ServerMaster.GetServers();
 
             for (int i = 0; i < servers.Count; i++)
             {
+                if (servers[i].ServerType == ServerType.Optimizer)
+                {
+                    continue;
+                }
                 servers[i].ConnectStatusChangeEvent -= ServerStatusChangeEvent;
                 servers[i].LogMessageEvent -= OsDataMaster_LogMessageEvent;
 
                 servers[i].ConnectStatusChangeEvent += ServerStatusChangeEvent;
                 servers[i].LogMessageEvent += OsDataMaster_LogMessageEvent;
+
             }
             RePaintSourceGrid();
         }
@@ -102,37 +109,37 @@ namespace OsEngine.OsData
         }
 
         /// <summary>
-        /// хост для чарта
+        /// chart host/хост для чарта
         /// </summary>
         private WindowsFormsHost _hostChart;
 
         /// <summary>
-        /// хост для серверов
+        /// server host/хост для серверов
         /// </summary>
         private WindowsFormsHost _hostSource;
 
         /// <summary>
-        /// хост для сетов
+        /// host for sets/хост для сетов
         /// </summary>
         private WindowsFormsHost _hostSets;
 
         /// <summary>
-        /// прямоугольник для подложки
+        /// rectangle for the substrate/прямоугольник для подложки
         /// </summary>
         private System.Windows.Shapes.Rectangle _rectangle;
 
         /// <summary>
-        /// меню выбора инструмента
+        /// tool selection menu/меню выбора инструмента
         /// </summary>
         private System.Windows.Controls.ComboBox _comboBoxSecurity;
 
         /// <summary>
-        /// меню выбора таймфрейма
+        /// time frame selection menu/меню выбора таймфрейма
         /// </summary>
         private System.Windows.Controls.ComboBox _comboBoxTimeFrame;
 
         /// <summary>
-        /// загрузить настройки из файла
+        /// load settings from file/загрузить настройки из файла
         /// </summary>
         private void Load()
         {
@@ -141,7 +148,7 @@ namespace OsEngine.OsData
                 Directory.CreateDirectory("Data");
             }
 
-            // название папок это у нас название сетов
+            // folder name is our name of the set/название папок это у нас название сетов
 
             string[] folders = Directory.GetDirectories("Data");
 
@@ -172,12 +179,12 @@ namespace OsEngine.OsData
         }
 
         /// <summary>
-        /// лог
+        /// log/лог
         /// </summary>
         private Log _log;
 
         /// <summary>
-        /// выслать новое сообщение в лог
+        /// send new message to log/выслать новое сообщение в лог
         /// </summary>
         void SendNewLogMessage(string message, LogMessageType type)
         {
@@ -188,46 +195,35 @@ namespace OsEngine.OsData
         }
 
         /// <summary>
-        /// событие нового сообщения в лог
+        /// new message event to log/событие нового сообщения в лог
         /// </summary>
         public event Action<string, LogMessageType> NewLogMessageEvent;
 
         /// <summary>
-        /// таблица источников
+        /// source table/таблица источников
         /// </summary>
         private DataGridView _gridSources;
 
         /// <summary>
-        /// создать таблицу источников
+        /// create source table/создать таблицу источников
         /// </summary>
         private void CreateSourceGrid()
         {
-            DataGridView newGrid = new DataGridView();
-
-            newGrid.AllowUserToOrderColumns = false;
-            newGrid.AllowUserToResizeRows = false;
-            newGrid.AllowUserToDeleteRows = false;
-            newGrid.AllowUserToAddRows = false;
-            newGrid.RowHeadersVisible = false;
-            newGrid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            newGrid.MultiSelect = false;
-
-            DataGridViewCellStyle style = new DataGridViewCellStyle();
-            style.Alignment = DataGridViewContentAlignment.BottomRight;
+            DataGridView newGrid = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.FullRowSelect, DataGridViewAutoSizeRowsMode.None);
 
             DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
-            cell0.Style = style;
+            cell0.Style = newGrid.DefaultCellStyle;
 
             DataGridViewColumn colum0 = new DataGridViewColumn();
             colum0.CellTemplate = cell0;
-            colum0.HeaderText = @"Источник";
+            colum0.HeaderText = OsLocalization.Data.Label4;
             colum0.ReadOnly = true;
             colum0.Width = 100;
             newGrid.Columns.Add(colum0);
 
             DataGridViewColumn colu = new DataGridViewColumn();
             colu.CellTemplate = cell0;
-            colu.HeaderText = @"Статус";
+            colu.HeaderText = OsLocalization.Data.Label5;
             colu.ReadOnly = true;
             colu.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             newGrid.Columns.Add(colu);
@@ -239,7 +235,7 @@ namespace OsEngine.OsData
         }
 
         /// <summary>
-        /// перерисовать таблицу источников
+        /// redraw the source table/перерисовать таблицу источников
         /// </summary>
         private void RePaintSourceGrid()
         {
@@ -251,11 +247,7 @@ namespace OsEngine.OsData
 
             _gridSources.Rows.Clear();
 
-            List<ServerType> servers = new ServerType[]
-            {
-               ServerType.Finam, ServerType.QuikDde, ServerType.QuikLua, ServerType.SmartCom, ServerType.Plaza, 
-                ServerType.Oanda, ServerType.BitMex, ServerType.Kraken ,ServerType.Binance,ServerType.BitStamp,ServerType.NinjaTrader
-            }.ToList();
+            List<ServerType> servers = ServerMaster.ServersTypes;
 
             List<IServer> serversCreate = ServerMaster.GetServers();
 
@@ -281,8 +273,10 @@ namespace OsEngine.OsData
                 {
                     row1.Cells[1].Value = "Connect";
                     DataGridViewCellStyle style = new DataGridViewCellStyle();
-                    style.BackColor = Color.DarkSeaGreen;
-                    style.SelectionBackColor = Color.SeaGreen;
+                    style.BackColor = Color.MediumSeaGreen;
+                    style.SelectionBackColor = Color.Green;
+                    style.ForeColor = Color.Black;
+                    style.SelectionForeColor = Color.Black;
                     row1.Cells[1].Style = style;
                     row1.Cells[0].Style = style;
                 }
@@ -290,21 +284,23 @@ namespace OsEngine.OsData
                 {
                     row1.Cells[1].Value = "Disconnect";
                     DataGridViewCellStyle style = new DataGridViewCellStyle();
-                    style.BackColor = Color.FloralWhite;
-                    style.SelectionBackColor = Color.DarkSalmon;
+                    style.BackColor = Color.Coral;
+                    style.SelectionBackColor = Color.Chocolate;
+                    style.ForeColor = Color.Black;
+                    style.SelectionForeColor = Color.Black;
                     row1.Cells[1].Style = style;
                     row1.Cells[0].Style = style;
                 }
 
                 _gridSources.Rows.Add(row1);
             }
-            _gridSources[1, 0].Selected = true; // Выбрать невидимую строку, чтобы убрать выделение по умолчанию с грида.
+            _gridSources[1, 0].Selected = true; // Select an invisible line to remove the default selection from the grid./Выбрать невидимую строку, чтобы убрать выделение по умолчанию с грида.
             _gridSources.ClearSelection();
 
         }
 
         /// <summary>
-        /// событие двойного клика на таблицу источников
+        /// double click event on the source table/событие двойного клика на таблицу источников
         /// </summary>
         void _gridSources_DoubleClick(object sender, EventArgs e)
         {
@@ -333,7 +329,7 @@ namespace OsEngine.OsData
         }
 
         /// <summary>
-        /// событие изменения статуса сервера
+        /// server status change event/событие изменения статуса сервера
         /// </summary>
         /// <param name="newState"></param>
         void ServerStatusChangeEvent(string newState)
@@ -341,44 +337,33 @@ namespace OsEngine.OsData
             RePaintSourceGrid();
         }
 
-// работа с гридом
+        // work with the grid/работа с гридом
 
         /// <summary>
-        /// таблица для сетов
+        /// table for sets/таблица для сетов
         /// </summary>
         private DataGridView _gridset;
 
         /// <summary>
-        /// создать таблицу для сетов
+        /// create table for sets/создать таблицу для сетов
         /// </summary>
         private void CreateSetGrid()
         {
-            DataGridView newGrid = new DataGridView();
-
-            newGrid.AllowUserToOrderColumns = false;
-            newGrid.AllowUserToResizeRows = false;
-            newGrid.AllowUserToDeleteRows = false;
-            newGrid.AllowUserToAddRows = false;
-            newGrid.RowHeadersVisible = false;
-            newGrid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            newGrid.MultiSelect = false;
-
-            DataGridViewCellStyle style = new DataGridViewCellStyle();
-            style.Alignment = DataGridViewContentAlignment.BottomRight;
+            DataGridView newGrid = DataGridFactory.GetDataGridView(DataGridViewSelectionMode.FullRowSelect, DataGridViewAutoSizeRowsMode.None);
 
             DataGridViewTextBoxCell cell0 = new DataGridViewTextBoxCell();
-            cell0.Style = style;
+            cell0.Style = newGrid.DefaultCellStyle;
 
             DataGridViewColumn colum0 = new DataGridViewColumn();
             colum0.CellTemplate = cell0;
-            colum0.HeaderText = @"Название";
+            colum0.HeaderText = OsLocalization.Data.Label3;
             colum0.ReadOnly = true;
             colum0.Width = 100;
             newGrid.Columns.Add(colum0);
 
             DataGridViewColumn colu = new DataGridViewColumn();
             colu.CellTemplate = cell0;
-            colu.HeaderText = @"Статус";
+            colu.HeaderText = OsLocalization.Data.Label5;
             colu.ReadOnly = true;
             colu.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             newGrid.Columns.Add(colu);
@@ -390,7 +375,7 @@ namespace OsEngine.OsData
         }
 
         /// <summary>
-        /// перерисовать таблицу сетов
+        /// redraw the set table/перерисовать таблицу сетов
         /// </summary>
         private void RePaintSetGrid()
         {
@@ -416,8 +401,10 @@ namespace OsEngine.OsData
                     if (_sets[i].Regime == DataSetState.On)
                     {
                         DataGridViewCellStyle style = new DataGridViewCellStyle();
-                        style.BackColor = Color.DarkSeaGreen;
-                        style.SelectionBackColor = Color.SeaGreen;
+                        style.BackColor = Color.MediumSeaGreen;
+                        style.SelectionBackColor = Color.Green;
+                        style.ForeColor = Color.Black;
+                        style.SelectionForeColor = Color.Black;
                         nRow.Cells[1].Style = style;
                         nRow.Cells[0].Style = style;
                     }
@@ -426,7 +413,7 @@ namespace OsEngine.OsData
                 }
                 if (_gridset.Rows.Count != 0)
                 {
-                    _gridset[0, 0].Selected = true; // Выбрать невидимую строку, чтобы убрать выделение по умолчанию с грида.
+                    _gridset[0, 0].Selected = true; // Select an invisible line to remove the default selection from the grid./Выбрать невидимую строку, чтобы убрать выделение по умолчанию с грида.
                     _gridset.ClearSelection();
                 }
             }
@@ -437,22 +424,23 @@ namespace OsEngine.OsData
         }
 
         /// <summary>
-        /// событие двойного клика по таблицу сетов
+        /// double-click event on the table of sets/событие двойного клика по таблицу сетов
         /// </summary>
         private void _gridset_DoubleClick(object sender, EventArgs e)
         {
-            if (_gridset.CurrentCell.RowIndex <= -1)
+            if (_gridset.CurrentCell == null ||
+                _gridset.CurrentCell.RowIndex <= -1)
             {
                 return;
             }
             int _rowIndex = _gridset.CurrentCell.RowIndex;
             RedactThisSet(_rowIndex);
             RePaintSetGrid();
-            _gridset.Rows[_rowIndex].Selected = true; // Вернуть фокус на строку, которую редактировал.
+            _gridset.Rows[_rowIndex].Selected = true; // Return focus to the line you edited./Вернуть фокус на строку, которую редактировал.
         }
 
         /// <summary>
-        /// одиночный клик по таблице сетов
+        /// single click on the table of sets/одиночный клик по таблице сетов
         /// </summary>
         void _gridset_Click(object sender, EventArgs e)
         {
@@ -468,18 +456,18 @@ namespace OsEngine.OsData
                 return;
             }
 
-            // cоздание контекстного меню
+            // creating a context menu/cоздание контекстного меню
 
             MenuItem[] items = new MenuItem[3];
 
             items[0] = new MenuItem();
-            items[0].Text = @"Добавить";
+            items[0].Text = OsLocalization.Data.Label6;
             items[0].Click += AddSet_Click;
 
-            items[1] = new MenuItem() { Text = @"Редактировать" };
+            items[1] = new MenuItem() { Text = OsLocalization.Data.Label7 };
             items[1].Click += RedactSet_Click;
 
-            items[2] = new MenuItem() { Text = @"Удалить"};
+            items[2] = new MenuItem() { Text = OsLocalization.Data.Label8 };
             items[2].Click += DeleteSet_Click;
 
             ContextMenu menu = new ContextMenu(items);
@@ -489,7 +477,7 @@ namespace OsEngine.OsData
         }
 
         /// <summary>
-        /// создать новый сет
+        /// create new set/создать новый сет
         /// </summary>
         private void AddSet_Click(object sender, EventArgs e)
         {
@@ -497,7 +485,7 @@ namespace OsEngine.OsData
         }
 
         /// <summary>
-        /// редактировать сет
+        /// edit set/редактировать сет
         /// </summary>
         void RedactSet_Click(object sender, EventArgs e)
         {
@@ -510,7 +498,7 @@ namespace OsEngine.OsData
         }
 
         /// <summary>
-        /// удалить сет
+        /// delete set/удалить сет
         /// </summary>
         void DeleteSet_Click(object sender, EventArgs e)
         {
@@ -520,7 +508,7 @@ namespace OsEngine.OsData
                 return;
             }
 
-            AcceptDialogUi ui = new AcceptDialogUi("Вы собираетесь удалить сет. Вы уверены?");
+            AcceptDialogUi ui = new AcceptDialogUi(OsLocalization.Data.Label9);
             ui.ShowDialog();
 
             if (ui.UserAcceptActioin == false)
@@ -532,15 +520,15 @@ namespace OsEngine.OsData
 
         private List<OsDataSet> _sets;
 
-// переключение сетов
+// set switching/переключение сетов
 
         /// <summary>
-        /// активный сет
+        /// active set/активный сет
         /// </summary>
         private OsDataSet _selectSet;
 
         /// <summary>
-        /// Включена ли прорисовка графика
+        /// Is drawing graphics enabled/Включена ли прорисовка графика
         /// </summary>
         private bool _isPaintEnabled = true;
         public bool IsPaintEnabled
@@ -549,9 +537,9 @@ namespace OsEngine.OsData
         }
 
         /// <summary>
-        /// сменить активный сет
+        /// change active set/сменить активный сет
         /// </summary>
-        /// <param name="index">индекс нового</param>
+        /// <param name="index">new index/индекс нового</param>
         private void ChangeActivSet(int index)
         {
             if (_sets == null ||
@@ -585,10 +573,10 @@ namespace OsEngine.OsData
             }
         }
 
-// управление        
+        // management/управление        
 
         /// <summary>
-        /// создать новый сет
+        /// create new set/создать новый сет
         /// </summary>
         public void CreateNewSet()
         {
@@ -600,7 +588,7 @@ namespace OsEngine.OsData
             set.NewLogMessageEvent += SendNewLogMessage;
 
             if (!set.ShowDialog())
-            { // пользователь не нажал на кнопку принять в форме
+            { // the user did not press the accept button in the form/пользователь не нажал на кнопку принять в форме
                 set.Regime = DataSetState.Off;
                 set.Delete();
                 return;
@@ -610,13 +598,13 @@ namespace OsEngine.OsData
             {
                 set.Regime = DataSetState.Off;
                 set.Delete();
-                MessageBox.Show(@"Создание сета прервано. Необходимо дать сету имя!");
+                MessageBox.Show(OsLocalization.Data.Label10);
                 return;
             }
 
             if (_sets.Find(dataSet => dataSet.SetName == set.SetName) != null)
             {
-                MessageBox.Show(@"Создание сета прервано. Сет с таким именем уже существует!");
+                MessageBox.Show(OsLocalization.Data.Label11);
                 set.Regime = DataSetState.Off;
                 set.Delete();
                 return;
@@ -629,7 +617,7 @@ namespace OsEngine.OsData
         }
 
         /// <summary>
-        /// удалить сет по индексу
+        /// delete set by index/удалить сет по индексу
         /// </summary>
         public void DeleteThisSet(int num)
         {
@@ -649,7 +637,7 @@ namespace OsEngine.OsData
         }
 
         /// <summary>
-        /// редактировать сет по индексу
+        /// edit set by index/редактировать сет по индексу
         /// </summary>
         public void RedactThisSet(int num)
         {
@@ -669,7 +657,7 @@ namespace OsEngine.OsData
             }
         }
         /// <summary>
-        /// сохранить настройки
+        /// save settings/сохранить настройки
         /// </summary>
         public void SaveSettings()
         {
@@ -692,7 +680,7 @@ namespace OsEngine.OsData
         }
 
         /// <summary>
-        /// загрузить настройки
+        /// load settings/загрузить настройки
         /// </summary>
         private void LoadSettings()
         {

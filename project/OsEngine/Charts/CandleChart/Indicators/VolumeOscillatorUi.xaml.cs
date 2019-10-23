@@ -1,34 +1,40 @@
 ﻿/*
+ * Your rights to use code governed by this license http://o-s-a.net/doc/license_simple_engine.pdf
  *Ваши права на использование кода регулируются данной лицензией http://o-s-a.net/doc/license_simple_engine.pdf
 */
 
 using System;
 using System.Windows;
 using System.Windows.Forms;
+using OsEngine.Language;
 using MessageBox = System.Windows.MessageBox;
 using TextBox = System.Windows.Forms.TextBox;
 
 namespace OsEngine.Charts.CandleChart.Indicators
 {
     /// <summary>
+    /// Interaction logic  for  MovingAverageUi.xaml
     /// Логика взаимодействия для MovingAverageUi.xaml
     /// </summary>
     public partial class VolumeOscillatorUi
     {
         /// <summary>
+        /// indicator that we're setting up
         /// индикатор который мы настраиваем
         /// </summary>
         private VolumeOscillator _mA;
 
         /// <summary>
+        /// whether indicator settings have been changed
         /// изменился ли индикатор
         /// </summary>
         public bool IsChange;
 
         /// <summary>
+        /// constructor
         /// конструктор
         /// </summary>
-        /// <param name="mA">индикатор для настройки</param>
+        /// <param name="mA">configuration indicator/индикатор для настройки</param>
         public VolumeOscillatorUi(VolumeOscillator mA)
         {
             InitializeComponent();
@@ -40,17 +46,16 @@ namespace OsEngine.Charts.CandleChart.Indicators
             HostColor.Child.BackColor = _mA.ColorBase;
 
             CheckBoxPaintOnOff.IsChecked = _mA.PaintOn;
-            //ComboBoxPriceField.Items.Add(StandardDeviationTypePoints.Open);
-            //ComboBoxPriceField.Items.Add(StandardDeviationTypePoints.High);
-            //ComboBoxPriceField.Items.Add(StandardDeviationTypePoints.Low);
-            //ComboBoxPriceField.Items.Add(StandardDeviationTypePoints.Close);
-            //ComboBoxPriceField.Items.Add(StandardDeviationTypePoints.Median);
-            //ComboBoxPriceField.Items.Add(StandardDeviationTypePoints.Typical);
 
-            //ComboBoxPriceField.SelectedItem = _mA.TypePointsToSearch;
+            ButtonColor.Content = OsLocalization.Charts.LabelButtonIndicatorColor;
+            CheckBoxPaintOnOff.Content = OsLocalization.Charts.LabelPaintIntdicatorIsVisible;
+            ButtonAccept.Content = OsLocalization.Charts.LabelButtonIndicatorAccept;
+            LabelIndicatorPeriod1.Content = OsLocalization.Charts.LabelIndicatorPeriod + " 1";
+            LabelIndicatorPeriod2.Content = OsLocalization.Charts.LabelIndicatorPeriod + " 2";
         }
 
         /// <summary>
+        /// accept button
         /// кнопка принять
         /// </summary>
         private void ButtonAccept_Click(object sender, RoutedEventArgs e)
@@ -81,6 +86,7 @@ namespace OsEngine.Charts.CandleChart.Indicators
         }
 
         /// <summary>
+        /// color setting button
         /// кнопка изменить цвет
         /// </summary>
         private void ButtonColor_Click(object sender, RoutedEventArgs e)

@@ -10,7 +10,7 @@ using Jayrock.Json;
 using Jayrock.Json.Conversion;
 using OsEngine.Entity;
 using OsEngine.Logging;
-
+using OsEngine.Market.Servers.Entity;
 
 namespace OsEngine.Market.Servers.Kraken.KrakenEntity
 {
@@ -27,6 +27,7 @@ namespace OsEngine.Market.Servers.Kraken.KrakenEntity
 
         public KrakenApi(string key, string privateKey)
         {
+            
             _url = "https://api.kraken.com";
             _version = 0;
             _key = key;
@@ -148,7 +149,7 @@ namespace OsEngine.Market.Servers.Kraken.KrakenEntity
             //Make the request
             try
             {
-
+                //ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
                 using (WebResponse webResponse = webRequest.GetResponse())
                 {
                     using (Stream str = webResponse.GetResponseStream())
@@ -162,6 +163,7 @@ namespace OsEngine.Market.Servers.Kraken.KrakenEntity
             }
             catch (WebException wex)
             {
+
                 using (HttpWebResponse response = (HttpWebResponse)wex.Response)
                 {
                     using (Stream str = response.GetResponseStream())
@@ -271,9 +273,11 @@ namespace OsEngine.Market.Servers.Kraken.KrakenEntity
             }
         }
 
+        //logging
         //обработка лога
 
         /// <summary>
+        /// add a new log message
         /// добавить в лог новое сообщение
         /// </summary>
         private void SendLogMessage(string message, LogMessageType type)
@@ -285,6 +289,7 @@ namespace OsEngine.Market.Servers.Kraken.KrakenEntity
         }
 
         /// <summary>
+        /// outgoing log message
         /// исходящее сообщение для лога
         /// </summary>
         public event Action<string, LogMessageType> LogMessageEvent;
@@ -561,16 +566,17 @@ namespace OsEngine.Market.Servers.Kraken.KrakenEntity
         public JsonObject GetTradeBalance(string aclass, string asset)
         {
             string reqs = "";
-            if (string.IsNullOrEmpty(aclass))
+            if (!string.IsNullOrEmpty(aclass))
             {
                 reqs += string.Format("&aclass={0}", aclass);
             }
-            if (string.IsNullOrEmpty(aclass))
+            if (!string.IsNullOrEmpty(asset))
             {
                 reqs += string.Format("&asset={0}", asset);
             }
 
             return QueryPrivate("TradeBalance", reqs);
+            //return QueryPrivate("Balance");
         }
 
         /// <summary>
